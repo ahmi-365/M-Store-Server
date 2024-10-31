@@ -254,10 +254,9 @@ app.delete("/api/orders/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html')); // Use relative path
-});
-
+// app.get('*', (req, res) => {
+//   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// });
 // Import and use route modules
 const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
