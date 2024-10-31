@@ -15,7 +15,7 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 const app = express();
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
-  "http://localhost:5173", // For local development
+  "http://localhost:5174", // For local development
   "https://e-commerace-store.onrender.com" // For your deployed frontend
 ];
 // Middleware setup
@@ -251,6 +251,9 @@ app.delete("/api/orders/:id", async (req, res) => {
     console.error("Error removing order:", error);
     res.status(500).json({ message: "Server error" });
   }
+});
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'build', 'index.html')); // Adjust the path if your index.html is located elsewhere
 });
 
 // Import and use route modules
