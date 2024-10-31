@@ -1,6 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
+const MongoStore = require('connect-mongo');
+
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
@@ -29,11 +31,12 @@ mongoose.connect(process.env.MONGO_URI, {
 
 // Session configuration for production use
 app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: true,
-  cookie: { secure: process.env.NODE_ENV === 'production' },
-}));
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: true,
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+    cookie: { secure: false }, // Set to true if using HTTPS
+  }));
 
 // Models setup
 const Order = mongoose.model('Order', new mongoose.Schema({
