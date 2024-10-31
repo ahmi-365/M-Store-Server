@@ -14,10 +14,15 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 // Express app setup
 const app = express();
 const PORT = process.env.PORT || 5000;
-
+const allowedOrigins = [
+  "http://localhost:5173", // For local development
+  "https://e-commerace-store.onrender.com" // For your deployed frontend
+];
 // Middleware setup
-app.use(cors({ origin: process.env.CLIENT_URL }));
-app.use(express.json());
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true // Include credentials (cookies, authorization headers, etc.)
+}));app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
