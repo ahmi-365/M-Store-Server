@@ -15,7 +15,7 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 const app = express();
 const PORT = process.env.PORT || 5000;
 const allowedOrigins = [
-  "http://localhost:5174", // For local development
+  "http://localhost:5173", // For local development
   "https://e-commerace-store.onrender.com" // For your deployed frontend
 ];
 // Middleware setup
@@ -25,6 +25,8 @@ app.use(cors({
 }));app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.static(path.join(__dirname, 'dist'))); // Use relative path
+
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -253,7 +255,7 @@ app.delete("/api/orders/:id", async (req, res) => {
   }
 });
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'build', 'index.html')); // Adjust the path if your index.html is located elsewhere
+  res.sendFile(path.join(__dirname, 'dist', 'index.html')); // Use relative path
 });
 
 // Import and use route modules
