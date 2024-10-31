@@ -10,6 +10,57 @@ const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.ENDPOINT_SECRET;
+// Stripe webhook endpoint
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('Webhook verified successfully:', event.id);
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
+    try {
+      const order = await Order.findOne({ eventId: session.id });
+      if (!order) {
+        console.error("Order not found for session ID:", session.id);
+        return res.status(404).send("Order not found");
+      }
+
+      const fullSession = await stripe.checkout.sessions.retrieve(session.id);
+      console.log("Full session data:", fullSession);
+
+      const payment = new Payment({
+        paymentId: fullSession.id,
+        orderId: order._id,
+        amount: fullSession.amount_total / 100,
+        currency: fullSession.currency,
+        paymentStatus: 'Completed',
+        paymentMethod: fullSession.payment_method_types[0],
+        receiptUrl: fullSession.receipt_url,
+      });
+
+      await payment.save();
+      console.log("Payment saved successfully:", payment);
+
+      order.status = 'Completed';
+      await order.save();
+      console.log("Order status updated successfully:", order);
+
+    } catch (error) {
+      console.error("Error saving payment or updating order:", error.message);
+      return res.status(500).send("Error processing webhook");
+    }
+  }
+
+  res.status(200).send('Webhook received');
+});
 
 // Express app setup
 const app = express();
@@ -86,57 +137,6 @@ const Payment = mongoose.model('Payment', new mongoose.Schema({
   receiptUrl: { type: String },
 }));
 
-// Stripe webhook endpoint
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('Webhook verified successfully:', event.id);
-  } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
-
-    try {
-      const order = await Order.findOne({ eventId: session.id });
-      if (!order) {
-        console.error("Order not found for session ID:", session.id);
-        return res.status(404).send("Order not found");
-      }
-
-      const fullSession = await stripe.checkout.sessions.retrieve(session.id);
-      console.log("Full session data:", fullSession);
-
-      const payment = new Payment({
-        paymentId: fullSession.id,
-        orderId: order._id,
-        amount: fullSession.amount_total / 100,
-        currency: fullSession.currency,
-        paymentStatus: 'Completed',
-        paymentMethod: fullSession.payment_method_types[0],
-        receiptUrl: fullSession.receipt_url,
-      });
-
-      await payment.save();
-      console.log("Payment saved successfully:", payment);
-
-      order.status = 'Completed';
-      await order.save();
-      console.log("Order status updated successfully:", order);
-
-    } catch (error) {
-      console.error("Error saving payment or updating order:", error.message);
-      return res.status(500).send("Error processing webhook");
-    }
-  }
-
-  res.status(200).send('Webhook received');
-});
 
 // Route to create Stripe checkout session
 app.post("/api/create-checkout-session", async (req, res) => {
