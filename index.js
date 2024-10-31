@@ -10,6 +10,14 @@ const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.ENDPOINT_SECRET;
+
+// Express app setup
+const app = express();
+const PORT = process.env.PORT || 5000;
+const allowedOrigins = [
+  "http://localhost:5173", // For local development
+  "https://e-commerace-store.onrender.com" // For your deployed frontend
+];
 // Stripe webhook endpoint
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -62,13 +70,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.status(200).send('Webhook received');
 });
 
-// Express app setup
-const app = express();
-const PORT = process.env.PORT || 5000;
-const allowedOrigins = [
-  "http://localhost:5173", // For local development
-  "https://e-commerace-store.onrender.com" // For your deployed frontend
-];
 // Middleware setup
 app.use(cors({
   origin: allowedOrigins,
