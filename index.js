@@ -2,7 +2,6 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const MongoStore = require('connect-mongo');
-
 const bodyParser = require('body-parser');
 const cors = require('cors');
 const path = require('path');
@@ -14,10 +13,6 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 // Express app setup
 const app = express();
 const PORT = process.env.PORT || 5000;
-const allowedOrigins = [
-  "http://localhost:5173", // For local development
-  "https://e-commerace-store.onrender.com" // For your deployed frontend
-];
 // Stripe webhook endpoint
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
@@ -70,15 +65,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.status(200).send('Webhook received');
 });
 
+// Allowed CORS origins
+const allowedOrigins = [
+  "http://localhost:5173", 
+  "https://e-commerace-store.onrender.com"
+];
+
 // Middleware setup
-app.use(cors({
-  origin: allowedOrigins,
-  credentials: true // Include credentials (cookies, authorization headers, etc.)
-}));app.use(express.json());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-app.use(express.static(path.join(__dirname, 'dist'))); // Use relative path
-
+app.use(express.static(path.join(__dirname, 'dist'))); // Static files for frontend
 
 // Database connection
 mongoose.connect(process.env.MONGO_URI, {
@@ -90,14 +88,14 @@ mongoose.connect(process.env.MONGO_URI, {
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
 
-// Session configuration for production use
+// Session configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: true,
-    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-    cookie: { secure: false }, // Set to true if using HTTPS
-  }));
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: true,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  cookie: { secure: false } // Set to true if using HTTPS
+}));
 
 // Models setup
 const Order = mongoose.model('Order', new mongoose.Schema({
@@ -110,9 +108,9 @@ const Order = mongoose.model('Order', new mongoose.Schema({
   discountPercentage: { type: Number, required: true, default: 0 },
   createdAt: { type: Date, default: Date.now },
   eventId: { type: String, default: null },
-  originDate: { type: Date, default: null },
   status: { type: String, default: 'Pending' },
 }));
+
 const OrderItem = mongoose.model('OrderItem', new mongoose.Schema({
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
   productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
@@ -127,6 +125,7 @@ const OrderItem = mongoose.model('OrderItem', new mongoose.Schema({
   selectedSize: String,
   selectedColor: String,
 }));
+
 const Payment = mongoose.model('Payment', new mongoose.Schema({
   paymentId: { type: String, required: true, unique: true },
   orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
@@ -255,11 +254,8 @@ app.delete("/api/orders/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
-});
 
-// Import and use route modules
+// Import and use additional routes as needed
 const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
@@ -268,5 +264,6 @@ app.use("/api/coupons", couponRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
+
