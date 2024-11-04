@@ -10,76 +10,9 @@ const session = require('express-session');
 const { v4: uuidv4 } = require('uuid');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.ENDPOINT_SECRET;
-
 // Express app setup
-
 const app = express();
 const PORT = process.env.PORT || 5000;
-app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  // Debugging: Log incoming request
-  console.log('Received webhook request:');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body.toString('utf8')); // Log raw body for debugging
-
-  try {
-      // Use raw payload directly for Stripe's webhook verification
-      event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-      console.log('Webhook verified successfully:', event.id);
-  } catch (err) {
-      console.error(`Webhook signature verification failed: ${err.message}`);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Check the event type
-  if (event.type === 'checkout.session.completed') {
-      const session = event.data.object;
-
-      try {
-          // Debugging: Log session data
-          console.log('Session data:', session);
-
-          const order = await Order.findOne({ eventId: session.id });
-          if (!order) {
-              console.error("Order not found for session ID:", session.id);
-              return res.status(404).send("Order not found");
-          }
-
-          // Create a new payment record
-          const payment = new Payment({
-              paymentId: session.id,
-              orderId: order._id,
-              amount: session.amount_total / 100,
-              currency: session.currency,
-              paymentStatus: 'paid',
-              paymentMethod: session.payment_method_types[0],
-              receiptUrl: session.receipt_url,
-          });
-
-          await payment.save();
-          console.log("Payment saved successfully:", payment);
-
-          // Update the order status
-          order.status = 'complete';
-          await order.save();
-          console.log("Order status updated successfully:", order);
-      } catch (error) {
-          console.error("Error saving payment or updating order:", error.message);
-          return res.status(500).send("Error processing webhook");
-      }
-  } else {
-      console.log(`Unhandled event type: ${event.type}`);
-  }
-
-  // Acknowledge receipt of the event
-  res.status(200).send('Webhook received');
-});
-
-
-
-
 
 // Set storage engine
 const storage = multer.diskStorage({
@@ -103,10 +36,6 @@ const upload = multer({
     }
   },
 });
-
-// Stripe webhook endpoint
-
-
 // Configure CORS
 app.use(cors({
   origin: [
@@ -117,23 +46,16 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200 // For legacy browser support
 }));
-
-
-
 app.use(express.json());
-
 // Error handler middleware
 app.use((err, req, res, next) => {
   console.error('Error occurred:', err.message); // Log the error message
   res.status(500).json({ error: 'An internal server error occurred.' }); // Send a generic error response
 });
-
 // Your routes would go here...
 
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-
 // Database connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
@@ -152,7 +74,6 @@ app.use(session({
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
     cookie: { secure: false }, // Set to true if using HTTPS
   }));
-
 // Models setup
 const Order = mongoose.model('Order', new mongoose.Schema({
   orderId: { type: String, default: uuidv4, required: true, unique: true },
@@ -191,8 +112,6 @@ const Payment = mongoose.model('Payment', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   receiptUrl: { type: String },
 }));
-
-
 // Route to create Stripe checkout session
 app.post("/api/create-checkout-session", async (req, res) => {
   const { cartItems, userEmail, shippingCost = 0, discountPercentage = 0, couponCode } = req.body;
@@ -200,19 +119,16 @@ app.post("/api/create-checkout-session", async (req, res) => {
   if (!cartItems || cartItems.length === 0) {
     return res.status(400).json({ error: "No items in the cart" });
   }
-
   try {
     const totalProductPrice = cartItems.reduce(
       (total, item) => total + item.price * item.quantity,
       0
     );
-
     let totalAmount = totalProductPrice + parseFloat(shippingCost);
     if (discountPercentage > 0) {
       const discountAmount = (totalAmount * discountPercentage) / 100;
       totalAmount -= discountAmount;
     }
-
     const totalAmountInCents = Math.round(totalAmount * 100);
     const lineItems = [{
       price_data: {
@@ -222,7 +138,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
       },
       quantity: 1,
     }];
-
     const newOrder = new Order({
       userEmail,
       totalProductPrice,
@@ -232,9 +147,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
       discountPercentage,
       status: "Pending",
     });
-
     await newOrder.save();
-
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       mode: "payment",
@@ -246,10 +159,8 @@ app.post("/api/create-checkout-session", async (req, res) => {
       success_url: `https://e-commerace-store.onrender.com/OrderHistory?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://e-commerace-store.onrender.com/`,
     });
-
     newOrder.eventId = session.id;
     await newOrder.save();
-
     const orderItems = cartItems.map((item) => ({
       orderId: newOrder._id,
       productId: item._id,
@@ -264,7 +175,6 @@ app.post("/api/create-checkout-session", async (req, res) => {
       selectedSize: item.selectedSize,
       selectedColor: item.selectedColor,
     }));
-
     await OrderItem.insertMany(orderItems);
     res.json({ id: session.id });
   } catch (error) {
@@ -272,7 +182,58 @@ app.post("/api/create-checkout-session", async (req, res) => {
     res.status(500).json({ error: "Failed to create Stripe session or save order" });
   }
 });
+app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
 
+  try {
+    // Verify the webhook signature
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('Webhook verified successfully:', event.id);
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
+    try {
+      // Find the order associated with the session
+      const order = await Order.findOne({ eventId: session.id });
+      if (!order) {
+        console.error("Order not found for session ID:", session.id);
+        return res.status(404).send("Order not found");
+      }
+
+      // Create a new payment record
+      const payment = new Payment({
+        paymentId: session.id,
+        orderId: order._id,
+        amount: session.amount_total / 100, // convert from cents to dollars
+        currency: session.currency,
+        paymentStatus: 'paid',
+        paymentMethod: session.payment_method_types[0],
+        receiptUrl: session.receipt_url,
+      });
+
+      await payment.save();
+      console.log("Payment saved successfully:", payment);
+
+      // Update the order status
+      order.status = 'complete';
+      await order.save();
+      console.log("Order status updated successfully:", order);
+    } catch (error) {
+      console.error("Error saving payment or updating order:", error.message);
+      return res.status(500).send("Error processing webhook");
+    }
+  }
+
+  // Acknowledge the event
+  res.status(200).send('Webhook received');
+});
 // Order management routes
 app.get("/api/orders/:id", async (req, res) => {
   try {
@@ -286,7 +247,6 @@ app.get("/api/orders/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
 app.get('/api/orders', async (req, res) => {
   try {
     const orders = await Order.find();
@@ -296,7 +256,6 @@ app.get('/api/orders', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch orders' });
   }
 });
-
 app.delete("/api/orders/:id", async (req, res) => {
   try {
     const order = await Order.findByIdAndDelete(req.params.id);
@@ -317,7 +276,6 @@ app.delete("/api/orders/:id", async (req, res) => {
 const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
-
 app.use("/api/coupons", couponRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
