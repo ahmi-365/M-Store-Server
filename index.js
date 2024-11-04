@@ -13,7 +13,43 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 // Express app setup
 const app = express();
 const PORT = process.env.PORT || 5000;
+app.use(
+  '/webhook',
+  bodyParser.raw({ type: 'application/json' })
+);
 
+// Webhook endpoint
+app.post('/webhook', (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    // Verify the event using the raw body and signature
+    event = stripe.webhooks.constructEvent(req.body, sig, 'whsec_7eyp3T0j8bQsJtBAzyGSBzMzSAon8m9B');
+    console.log('Webhook verified:', event);
+  } catch (err) {
+    console.error(`Webhook signature verification failed: ${err.message}`);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event types you are interested in
+  switch (event.type) {
+    case 'payment_intent.succeeded':
+      const paymentIntent = event.data.object;
+      console.log('PaymentIntent was successful!', paymentIntent);
+      break;
+    case 'payment_intent.payment_failed':
+      const failedPaymentIntent = event.data.object;
+      console.log('PaymentIntent failed:', failedPaymentIntent);
+      break;
+    // Handle other event types as needed
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  // Return a response to acknowledge receipt of the event
+  res.json({ received: true });
+});
 // Set storage engine
 const storage = multer.diskStorage({
   destination: './uploads', // Directory to store the uploaded images
@@ -112,43 +148,7 @@ const Payment = mongoose.model('Payment', new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   receiptUrl: { type: String },
 }));
-app.use(
-  '/webhook',
-  bodyParser.raw({ type: 'application/json' })
-);
 
-// Webhook endpoint
-app.post('/webhook', (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  let event;
-
-  try {
-    // Verify the event using the raw body and signature
-    event = stripe.webhooks.constructEvent(req.body, sig, 'whsec_7eyp3T0j8bQsJtBAzyGSBzMzSAon8m9B');
-    console.log('Webhook verified:', event);
-  } catch (err) {
-    console.error(`Webhook signature verification failed: ${err.message}`);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle the event types you are interested in
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      console.log('PaymentIntent was successful!', paymentIntent);
-      break;
-    case 'payment_intent.payment_failed':
-      const failedPaymentIntent = event.data.object;
-      console.log('PaymentIntent failed:', failedPaymentIntent);
-      break;
-    // Handle other event types as needed
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
-
-  // Return a response to acknowledge receipt of the event
-  res.json({ received: true });
-});
 
 // Route to create Stripe checkout session
 app.post("/api/create-checkout-session", async (req, res) => {
