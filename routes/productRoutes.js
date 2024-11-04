@@ -54,7 +54,34 @@ router.get('/', async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 });
-
+// Route to add a new product
+router.post('/add', async (req, res) => {
+    try {
+      const { name, price, description, sku, brand, category, image } = req.body;
+  
+      // Create a new product instance
+      const newProduct = new Product({
+        name,
+        price,
+        description,
+        sku,
+        brand,
+        category,
+        imageUrl: image // Note: assuming `image` from payload matches `imageUrl` in schema
+      });
+  
+      // Save product to the database
+      const savedProduct = await newProduct.save();
+  
+      res.status(201).json({
+        message: 'Product added successfully',
+        product: savedProduct
+      });
+    } catch (error) {
+      console.error('Error saving product:', error.message);
+      res.status(500).json({ error: 'Failed to add product' });
+    }
+  });
 // Get product by ID
 router.get('/:id', async (req, res) => {
     try {
