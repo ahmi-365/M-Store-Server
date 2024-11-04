@@ -1,32 +1,15 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
+
 const Product = require('../models/Product');
 const { check, validationResult } = require('express-validator');
 
+// Initialize router
 const router = express.Router();
 
-// Multer setup for image uploads
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-    filename: (req, file, cb) => {
-        cb(null, Date.now() + path.extname(file.originalname));
-    }
-});
-
-// File filter for validating image types
-const fileFilter = (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
-        cb(null, true);
-    } else {
-        cb(new Error('Invalid file type. Only JPEG, PNG, and GIF are allowed.'), false);
-    }
-};
-
-const upload = multer({ storage: storage, fileFilter: fileFilter });
+// Multer setup for in-memory storage
+const upload = multer({ storage: multer.memoryStorage() });
 
 // Get all products with pagination and filtering
 router.get('/', async (req, res) => {
@@ -104,19 +87,11 @@ router.post(
         }
 
         const { name, price, description, sku, brand, category } = req.body;
-        const imageUrl = req.file ? req.file.path.replace(/\\/g, '/') : '';
+        const imageUrl = req.file ? req.file.path : null; // You can use this if needed, but it's currently not uploaded anywhere.
 
-        if (!imageUrl) {
-            return res.status(400).json({ error: 'Image upload required' });
-        }
-
-        try {
-            const newProduct = new Product({ name, price, description, sku, brand, category, imageUrl });
-            await newProduct.save();
-            res.status(201).json(newProduct);
-        } catch (error) {
-            res.status(400).json({ error: 'Bad Request' });
-        }
+        const newProduct = new Product({ name, price, description, sku, brand, category, imageUrl });
+        await newProduct.save();
+        res.status(201).json(newProduct);
     }
 );
 
@@ -139,7 +114,7 @@ router.put(
         }
 
         const { name, price, description, sku, brand, category } = req.body;
-        const imageUrl = req.file ? req.file.path.replace(/\\/g, '/') : undefined;
+        const imageUrl = req.file ? req.file.path : undefined; // Get image path if provided
 
         try {
             const updatedProduct = await Product.findByIdAndUpdate(
@@ -156,7 +131,17 @@ router.put(
         }
     }
 );
-
+router.post('/upload', upload.single('image'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'Image upload failed' });
+        }
+        const imageUrl = req.file.path; // Get the Cloudinary URL for the uploaded image
+        res.status(200).json({ imageUrl });
+    } catch (error) {
+        res.status(500).json({ error: 'Image upload failed: ' + error.message });
+    }
+});
 // Delete product by ID
 router.delete('/:id', async (req, res) => {
     try {
@@ -171,3 +156,5 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+
