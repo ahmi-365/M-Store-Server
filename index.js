@@ -16,16 +16,18 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 const app = express();
 const PORT = process.env.PORT || 5000;
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
+  console.log('Received webhook request:', req.method, req.url);
+  console.log('Headers:', req.headers);
+
+  // Log the raw body as a string
+  const rawBody = req.body.toString('utf8');
+  console.log('Body:', rawBody);
+
+  const sig = req.headers['stripe-signature']; // Correct signature extraction
   let event;
 
-  // Log incoming requests for debugging
-  console.log('Received webhook request:');
-  console.log('Headers:', req.headers);
-  console.log('Body:', req.body.toString());
-
-  // Verify the webhook signature
   try {
+      // Construct the event using the raw body
       event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
       console.log('Webhook verified successfully:', event.id);
   } catch (err) {
@@ -33,16 +35,24 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
+  // Status object for tracking process flow
+  const status = {
+      eventId: event.id,
+      eventType: event.type,
+      success: true,
+      orderId: null,
+  };
+
   // Handle the event types
   switch (event.type) {
       case 'checkout.session.completed':
           const session = event.data.object;
-
           try {
               // Find the order associated with the session ID
               const order = await Order.findOne({ eventId: session.id });
               if (!order) {
                   console.error("Order not found for session ID:", session.id);
+                  status.success = false;
                   return res.status(404).send("Order not found");
               }
 
@@ -69,8 +79,10 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
               await order.save();
               console.log("Order status updated successfully:", order);
 
+              status.orderId = order._id; // Save order ID for logging
           } catch (error) {
-              console.error("Error saving payment or updating order:", error.message);
+              console.error("Error saving payment or updating order:", error);
+              status.success = false;
               return res.status(500).send("Error processing webhook");
           }
           break;
@@ -85,6 +97,9 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
       default:
           console.log(`Unhandled event type ${event.type}`);
   }
+
+  // Log the status of the webhook processing
+  console.log(`Webhook processed: ${JSON.stringify(status)}`);
 
   // Acknowledge receipt of the event
   res.status(200).send('Webhook received');
