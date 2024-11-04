@@ -93,12 +93,14 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 // Configure CORS
 app.use(cors({
   origin: [
-    'http://localhost:5173', // Your local frontend
-    'https://e-commerace-store.onrender.com' // Your deployed frontend
+    'http://localhost:5173',
+    'https://e-commerace-store.onrender.com'
   ],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
-  credentials: true // If you need to support credentials (like cookies)
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true,
+  optionsSuccessStatus: 200 // For legacy browser support
 }));
+
 
 
 app.use(express.json());
