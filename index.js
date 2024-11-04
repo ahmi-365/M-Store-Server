@@ -90,16 +90,16 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 });
 
 const allowedOrigins = [
-  "http://localhost:5173", // For local development
-  "https://e-commerace-store.onrender.com" // For your deployed frontend
+  'http://localhost:5173', // Local development
+  'https://your-production-frontend-url.com', // Production frontend URL
 ];
 
-// Middleware setup
 app.use(cors({
-  origin: 'http://localhost:5173', // Allow all origins
+  origin: allowedOrigins,
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true // Include credentials if necessary
+  credentials: true,
 }));
+
 
 app.use(express.json());
 
