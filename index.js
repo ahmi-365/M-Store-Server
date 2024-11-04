@@ -96,11 +96,13 @@ const allowedOrigins = [
 
 // Middleware setup
 app.use(cors({
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
       const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      console.error(`CORS Error: ${msg} - Origin: ${origin}`); // Log the error
       return callback(new Error(msg), false);
     }
     return callback(null, true);
@@ -109,6 +111,15 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+// Error handler middleware
+app.use((err, req, res, next) => {
+  console.error('Error occurred:', err.message); // Log the error message
+  res.status(500).json({ error: 'An internal server error occurred.' }); // Send a generic error response
+});
+
+// Your routes would go here...
+
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
