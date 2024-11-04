@@ -114,34 +114,39 @@ const Payment = mongoose.model('Payment', new mongoose.Schema({
 }));
 app.use(
   '/webhook',
-  bodyParser.raw({ type: 'application/json' }) // or 'application/x-www-form-urlencoded'
+  bodyParser.raw({ type: 'application/json' })
 );
+
+// Webhook endpoint
 app.post('/webhook', (req, res) => {
   const sig = req.headers['stripe-signature'];
-
   let event;
 
   try {
-    // Use the raw body to verify the signature
-    event = stripe.webhooks.constructEvent(req.body, sig, 'your_endpoint_secret');
+    // Verify the event using the raw body and signature
+    event = stripe.webhooks.constructEvent(req.body, sig, 'whsec_7eyp3T0j8bQsJtBAzyGSBzMzSAon8m9B');
     console.log('Webhook verified:', event);
   } catch (err) {
-    console.log(`Webhook signature verification failed: ${err.message}`);
+    console.error(`Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event (e.g., payment intent succeeded)
+  // Handle the event types you are interested in
   switch (event.type) {
     case 'payment_intent.succeeded':
       const paymentIntent = event.data.object;
       console.log('PaymentIntent was successful!', paymentIntent);
+      break;
+    case 'payment_intent.payment_failed':
+      const failedPaymentIntent = event.data.object;
+      console.log('PaymentIntent failed:', failedPaymentIntent);
       break;
     // Handle other event types as needed
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
 
-  // Return a 200 response to acknowledge receipt of the event
+  // Return a response to acknowledge receipt of the event
   res.json({ received: true });
 });
 
