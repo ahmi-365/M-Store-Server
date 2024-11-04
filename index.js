@@ -64,7 +64,7 @@ app.post('/webhook', async (req, res) => {
           currency: session.currency,
           paymentStatus: 'paid',
           paymentMethod: session.payment_method_types[0],
-          receiptUrl: session.receipt_url,
+          receiptUrl: paymentIntent.charges.data[0].receipt_url, // Use receipt_url from the PaymentIntent's first charge
         });
 
         await payment.save();
