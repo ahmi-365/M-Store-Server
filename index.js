@@ -96,7 +96,7 @@ const allowedOrigins = [
 
 // Middleware setup
 app.use(cors({
-  origin: '*', // Allow all origins
+  origin: 'http://localhost:5173', // Allow all origins
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
   credentials: true // Include credentials if necessary
 }));
