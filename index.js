@@ -12,32 +12,9 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const endpointSecret = process.env.ENDPOINT_SECRET;
 
 // Express app setup
+
 const app = express();
 const PORT = process.env.PORT || 5000;
-// Set storage engine
-const storage = multer.diskStorage({
-  destination: './uploads', // Directory to store the uploaded images
-  filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to the filename
-  },
-});
-// Initialize upload variable
-const upload = multer({
-  storage: storage,
-  limits: { fileSize: 1000000 }, // Limit file size to 1MB
-  fileFilter: function (req, file, cb) {
-    const filetypes = /jpeg|jpg|png|gif/; // Allowed file types
-    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = filetypes.test(file.mimetype);
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb('Error: Images only!');
-    }
-  },
-});
-
-// Stripe webhook endpoint
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
@@ -88,6 +65,31 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
   res.status(200).send('Webhook received');
 });
+
+// Set storage engine
+const storage = multer.diskStorage({
+  destination: './uploads', // Directory to store the uploaded images
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // Append timestamp to the filename
+  },
+});
+// Initialize upload variable
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 1000000 }, // Limit file size to 1MB
+  fileFilter: function (req, file, cb) {
+    const filetypes = /jpeg|jpg|png|gif/; // Allowed file types
+    const extname = filetypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = filetypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb('Error: Images only!');
+    }
+  },
+});
+
+// Stripe webhook endpoint
 
 
 // Configure CORS
