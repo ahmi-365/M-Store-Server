@@ -14,10 +14,6 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 // Express app setup
 const app = express();
 const PORT = process.env.PORT || 5000;
-const allowedOrigins = [
-  "http://localhost:5173", // For local development
-  "https://e-commerace-store.onrender.com" // For your deployed frontend
-];
 // Set storage engine
 const storage = multer.diskStorage({
   destination: './uploads', // Directory to store the uploaded images
@@ -93,6 +89,11 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.status(200).send('Webhook received');
 });
 
+const allowedOrigins = [
+  "http://localhost:5173", // For local development
+  "https://e-commerace-store.onrender.com" // For your deployed frontend
+];
+
 // Middleware setup
 app.use(cors({
   origin: function(origin, callback) {
@@ -106,6 +107,7 @@ app.use(cors({
   },
   credentials: true // Include credentials (cookies, authorization headers, etc.)
 }));
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
