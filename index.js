@@ -91,7 +91,7 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
 const allowedOrigins = [
   'http://localhost:5173', // Local development
-  'https://your-production-frontend-url.com', // Production frontend URL
+  'https://e-commerace-store.onrender.com', // Production frontend URL
 ];
 
 app.use(cors({
