@@ -96,68 +96,68 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new product with image upload
-router.post(
-    '/',
-    upload.single('image'),
-    [
-        check('name').notEmpty().withMessage('Name is required'),
-        check('price').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
-        check('description').notEmpty().withMessage('Description is required'),
-        check('sku').notEmpty().withMessage('SKU is required'),
-        check('brand').notEmpty().withMessage('Brand is required'),
-        check('category').notEmpty().withMessage('Category is required'),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
+// router.post(
+//     '/',
+//     upload.single('image'),
+//     [
+//         check('name').notEmpty().withMessage('Name is required'),
+//         check('price').isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
+//         check('description').notEmpty().withMessage('Description is required'),
+//         check('sku').notEmpty().withMessage('SKU is required'),
+//         check('brand').notEmpty().withMessage('Brand is required'),
+//         check('category').notEmpty().withMessage('Category is required'),
+//     ],
+//     async (req, res) => {
+//         const errors = validationResult(req);
+//         if (!errors.isEmpty()) {
+//             return res.status(400).json({ errors: errors.array() });
+//         }
 
-        const { name, price, description, sku, brand, category } = req.body;
-        const imageUrl = req.file ? req.file.path : null; // You can use this if needed, but it's currently not uploaded anywhere.
+//         const { name, price, description, sku, brand, category } = req.body;
+//         const imageUrl = req.file ? req.file.path : null; // You can use this if needed, but it's currently not uploaded anywhere.
 
-        const newProduct = new Product({ name, price, description, sku, brand, category, imageUrl });
-        await newProduct.save();
-        res.status(201).json(newProduct);
-    }
-);
+//         const newProduct = new Product({ name, price, description, sku, brand, category, imageUrl });
+//         await newProduct.save();
+//         res.status(201).json(newProduct);
+//     }
+// );
 
-// Update product by ID
-router.put(
-    '/:id',
-    upload.single('image'),
-    [
-        check('name').optional().notEmpty().withMessage('Name cannot be empty'),
-        check('price').optional().isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
-        check('description').optional().notEmpty().withMessage('Description cannot be empty'),
-        check('sku').optional().notEmpty().withMessage('SKU cannot be empty'),
-        check('brand').optional().notEmpty().withMessage('Brand cannot be empty'),
-        check('category').optional().notEmpty().withMessage('Category cannot be empty'),
-    ],
-    async (req, res) => {
-        const errors = validationResult(req);
-        if (!errors.isEmpty()) {
-            return res.status(400).json({ errors: errors.array() });
-        }
+// // Update product by ID
+// router.put(
+//     '/:id',
+//     upload.single('image'),
+//     [
+//         check('name').optional().notEmpty().withMessage('Name cannot be empty'),
+//         check('price').optional().isFloat({ gt: 0 }).withMessage('Price must be greater than 0'),
+//         check('description').optional().notEmpty().withMessage('Description cannot be empty'),
+//         check('sku').optional().notEmpty().withMessage('SKU cannot be empty'),
+//         check('brand').optional().notEmpty().withMessage('Brand cannot be empty'),
+//         check('category').optional().notEmpty().withMessage('Category cannot be empty'),
+//     ],
+//     async (req, res) => {
+//         const errors = validationResult(req);
+//         if (!errors.isEmpty()) {
+//             return res.status(400).json({ errors: errors.array() });
+//         }
 
-        const { name, price, description, sku, brand, category } = req.body;
-        const imageUrl = req.file ? req.file.path : undefined; // Get image path if provided
+//         const { name, price, description, sku, brand, category } = req.body;
+//         const imageUrl = req.file ? req.file.path : undefined; // Get image path if provided
 
-        try {
-            const updatedProduct = await Product.findByIdAndUpdate(
-                req.params.id,
-                { name, price, description, sku, brand, category, imageUrl },
-                { new: true, runValidators: true }
-            );
-            if (!updatedProduct) {
-                return res.status(404).json({ error: 'Product not found' });
-            }
-            res.json(updatedProduct);
-        } catch (error) {
-            res.status(400).json({ error: 'Bad Request' });
-        }
-    }
-);
+//         try {
+//             const updatedProduct = await Product.findByIdAndUpdate(
+//                 req.params.id,
+//                 { name, price, description, sku, brand, category, imageUrl },
+//                 { new: true, runValidators: true }
+//             );
+//             if (!updatedProduct) {
+//                 return res.status(404).json({ error: 'Product not found' });
+//             }
+//             res.json(updatedProduct);
+//         } catch (error) {
+//             res.status(400).json({ error: 'Bad Request' });
+//         }
+//     }
+// );
 router.post('/upload', upload.single('image'), (req, res) => {
     try {
         if (!req.file) {
