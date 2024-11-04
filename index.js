@@ -13,43 +13,65 @@ const endpointSecret = process.env.ENDPOINT_SECRET;
 // Express app setup
 const app = express();
 const PORT = process.env.PORT || 5000;
+// Middleware to parse raw body for Stripe webhooks
 app.use(
   '/webhook',
-  bodyParser.raw({ type: 'application/json' })
+  express.raw({ type: 'application/json' }) // Use express.raw instead of bodyParser
 );
-
 // Webhook endpoint
-app.post('/webhook', (req, res) => {
+app.post('/webhook', async (req, res) => {
   const sig = req.headers['stripe-signature'];
   let event;
 
   try {
-    // Verify the event using the raw body and signature
-    event = stripe.webhooks.constructEvent(req.body, sig, 'whsec_7eyp3T0j8bQsJtBAzyGSBzMzSAon8m9B');
-    console.log('Webhook verified:', event);
+    // Use raw payload directly for Stripe's webhook verification
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+    console.log('Webhook verified successfully:', event.id);
   } catch (err) {
     console.error(`Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event types you are interested in
-  switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      console.log('PaymentIntent was successful!', paymentIntent);
-      break;
-    case 'payment_intent.payment_failed':
-      const failedPaymentIntent = event.data.object;
-      console.log('PaymentIntent failed:', failedPaymentIntent);
-      break;
-    // Handle other event types as needed
-    default:
-      console.log(`Unhandled event type ${event.type}`);
+  // Handle the checkout.session.completed event
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
+
+    try {
+      // Look for the corresponding order using the session ID
+      const order = await Order.findOne({ eventId: session.id });
+      if (!order) {
+        console.error("Order not found for session ID:", session.id);
+        return res.status(404).send("Order not found");
+      }
+
+      // Create a new payment record
+      const payment = new Payment({
+        paymentId: session.id,
+        orderId: order._id,
+        amount: session.amount_total / 100, // Convert to actual amount
+        currency: session.currency,
+        paymentStatus: 'paid',
+        paymentMethod: session.payment_method_types[0],
+        receiptUrl: session.receipt_url,
+      });
+
+      await payment.save();
+      console.log("Payment saved successfully:", payment);
+
+      // Update the order status
+      order.status = 'complete';
+      await order.save();
+      console.log("Order status updated successfully:", order);
+    } catch (error) {
+      console.error("Error saving payment or updating order:", error.message);
+      return res.status(500).send("Error processing webhook");
+    }
   }
 
-  // Return a response to acknowledge receipt of the event
-  res.json({ received: true });
+  // Acknowledge receipt of the event
+  res.status(200).send('Webhook received');
 });
+
 // Set storage engine
 const storage = multer.diskStorage({
   destination: './uploads', // Directory to store the uploaded images
