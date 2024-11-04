@@ -89,7 +89,6 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.status(200).send('Webhook received');
 });
 
-const cors = require('cors');
 
 // Configure CORS
 app.use(cors({
