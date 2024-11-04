@@ -95,9 +95,18 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
 
 // Middleware setup
 app.use(cors({
-  origin: allowedOrigins,
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
   credentials: true // Include credentials (cookies, authorization headers, etc.)
-}));app.use(express.json());
+}));
+app.use(express.json());
 app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
