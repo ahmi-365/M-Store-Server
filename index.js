@@ -89,15 +89,16 @@ app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res)
   res.status(200).send('Webhook received');
 });
 
-const allowedOrigins = [
-  'http://localhost:5173', // Local development
-  'https://e-commerace-store.onrender.com', // Production frontend URL
-];
+const cors = require('cors');
 
+// Configure CORS
 app.use(cors({
-  origin: allowedOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
+  origin: [
+    'http://localhost:5173', // Your local frontend
+    'https://e-commerace-store.onrender.com' // Your deployed frontend
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'], // Allowed methods
+  credentials: true // If you need to support credentials (like cookies)
 }));
 
 
