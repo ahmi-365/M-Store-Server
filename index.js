@@ -87,18 +87,6 @@ app.post('/webhook', async (req, res) => {
   res.json({ received: true });
 });
 
-app.get('/api/payments/:id', async (req, res) => {
-  try {
-    const payment = await Payment.findOne({ orderId: req.params.id });
-    if (!payment) {
-      return res.status(404).json({ message: "Payment not found" });
-    }
-    res.json(payment);
-  } catch (error) {
-    console.error("Error fetching payment:", error);
-    res.status(500).json({ message: "Server error" });
-  }
-});
 
 // Set storage engine
 const storage = multer.diskStorage({
@@ -305,6 +293,19 @@ app.delete("/api/orders/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+app.get('/api/payments/:id', async (req, res) => {
+  try {
+    const payment = await Payment.findOne({ orderId: req.params.id });
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+    res.json(payment);
+  } catch (error) {
+    console.error("Error fetching payment:", error);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // app.get('*', (req, res) => {
 //   res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
 // });
