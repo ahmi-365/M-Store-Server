@@ -34,61 +34,59 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
+  // Handle 'checkout.session.completed' event
+  if (event.type === 'checkout.session.completed') {
+    const session = event.data.object;
 
-      try {
-        const paymentIntentId = session.payment_intent;
-        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    try {
+      const paymentIntentId = session.payment_intent;
+      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-        // Log the paymentIntent to verify charges and receipt_url details
-        console.log("Retrieved PaymentIntent:", JSON.stringify(paymentIntent, null, 2));
+      // Initialize receiptUrl variable
+      let receiptUrl = null;
 
-        // Check if charges exist and access receipt_url if available
-        let receiptUrl = null;
-        if (paymentIntent.charges && paymentIntent.charges.data.length > 0) {
-          receiptUrl = paymentIntent.charges.data[0].receipt_url;
-        } else {
-          console.warn("No charges or receipt_url found on PaymentIntent.");
-        }
-
-        const order = await Order.findOne({ eventId: session.id });
-        if (!order) {
-          console.error("Order not found for session ID:", session.id);
-          return res.status(404).send("Order not found");
-        }
-
-        const payment = new Payment({
-          paymentId: session.id,
-          orderId: order._id,
-          amount: session.amount_total / 100, // Convert to actual amount
-          currency: session.currency,
-          paymentStatus: 'paid',
-          paymentMethod: session.payment_method_types[0],
-          receiptUrl: receiptUrl, // Save the retrieved receipt URL
-        });
-
-        await payment.save();
-        console.log("Payment saved successfully:", payment);
-
-        order.status = 'Paid';
-        await order.save();
-        console.log("Order status updated successfully:", order);
-      } catch (error) {
-        console.error("Error saving payment or updating order:", error.message);
-        return res.status(500).send("Error processing webhook");
+      // Attempt to retrieve receipt_url from charges data
+      if (paymentIntent.charges && paymentIntent.charges.data.length > 0) {
+        receiptUrl = paymentIntent.charges.data[0].receipt_url;
       }
-      break;
 
-    default:
-      console.log(`Unhandled event type ${event.type}`);
+      // If receipt_url is still null, try fetching the Charge directly
+      if (!receiptUrl && paymentIntent.charges.data[0]) {
+        const chargeId = paymentIntent.charges.data[0].id;
+        const charge = await stripe.charges.retrieve(chargeId);
+        receiptUrl = charge.receipt_url; // Retrieve receipt_url from Charge object
+      }
+
+      const order = await Order.findOne({ eventId: session.id });
+      if (!order) {
+        console.error("Order not found for session ID:", session.id);
+        return res.status(404).send("Order not found");
+      }
+
+      const payment = new Payment({
+        paymentId: session.id,
+        orderId: order._id,
+        amount: session.amount_total / 100, // Convert to actual amount
+        currency: session.currency,
+        paymentStatus: 'paid',
+        paymentMethod: session.payment_method_types[0],
+        receiptUrl: receiptUrl, // Save retrieved receipt URL
+      });
+
+      await payment.save();
+      console.log("Payment saved successfully:", payment);
+
+      order.status = 'Paid';
+      await order.save();
+      console.log("Order status updated successfully:", order);
+    } catch (error) {
+      console.error("Error saving payment or updating order:", error.message);
+      return res.status(500).send("Error processing webhook");
+    }
   }
 
   res.json({ received: true });
 });
-
-
 // Set storage engine
 const storage = multer.diskStorage({
   destination: './uploads', // Directory to store the uploaded images
