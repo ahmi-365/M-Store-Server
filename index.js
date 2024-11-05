@@ -38,7 +38,13 @@ app.post('/webhook', async (req, res) => {
     const session = event.data.object;
 
     try {
-      const order = await Order.findOne({ eventId: session.id });
+      // Find or create an order by session ID and store the Payment Intent ID
+      let order = await Order.findOneAndUpdate(
+        { eventId: session.id },
+        { paymentIntentId: session.payment_intent },
+        { new: true, upsert: true }
+      );
+
       if (!order) {
         console.error("Order not found for session ID:", session.id);
         return res.status(404).send("Order not found");
@@ -51,7 +57,7 @@ app.post('/webhook', async (req, res) => {
         currency: session.currency,
         paymentStatus: 'paid',
         paymentMethod: session.payment_method_types[0],
-        receiptUrl: null, // Initially null; will update in 'charge.succeeded'
+        receiptUrl: null, // Initially null; updated later
       });
 
       await payment.save();
@@ -72,6 +78,7 @@ app.post('/webhook', async (req, res) => {
     const receiptUrl = charge.receipt_url;
 
     try {
+      // Find Payment record using paymentIntentId and update with receipt URL
       const payment = await Payment.findOneAndUpdate(
         { paymentId: paymentIntentId },
         { receiptUrl: receiptUrl },
