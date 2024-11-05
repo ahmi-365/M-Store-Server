@@ -34,29 +34,10 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle 'checkout.session.completed' event
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
 
     try {
-      const paymentIntentId = session.payment_intent;
-      const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-      // Initialize receiptUrl variable
-      let receiptUrl = null;
-
-      // Attempt to retrieve receipt_url from charges data
-      if (paymentIntent.charges && paymentIntent.charges.data.length > 0) {
-        receiptUrl = paymentIntent.charges.data[0].receipt_url;
-      }
-
-      // If receipt_url is still null, try fetching the Charge directly
-      if (!receiptUrl && paymentIntent.charges.data[0]) {
-        const chargeId = paymentIntent.charges.data[0].id;
-        const charge = await stripe.charges.retrieve(chargeId);
-        receiptUrl = charge.receipt_url; // Retrieve receipt_url from Charge object
-      }
-
       const order = await Order.findOne({ eventId: session.id });
       if (!order) {
         console.error("Order not found for session ID:", session.id);
@@ -66,11 +47,11 @@ app.post('/webhook', async (req, res) => {
       const payment = new Payment({
         paymentId: session.id,
         orderId: order._id,
-        amount: session.amount_total / 100, // Convert to actual amount
+        amount: session.amount_total / 100,
         currency: session.currency,
         paymentStatus: 'paid',
         paymentMethod: session.payment_method_types[0],
-        receiptUrl: receiptUrl, // Save retrieved receipt URL
+        receiptUrl: null, // Initially null; will update in 'charge.succeeded'
       });
 
       await payment.save();
@@ -85,8 +66,32 @@ app.post('/webhook', async (req, res) => {
     }
   }
 
+  if (event.type === 'charge.succeeded') {
+    const charge = event.data.object;
+    const paymentIntentId = charge.payment_intent;
+    const receiptUrl = charge.receipt_url;
+
+    try {
+      const payment = await Payment.findOneAndUpdate(
+        { paymentId: paymentIntentId },
+        { receiptUrl: receiptUrl },
+        { new: true }
+      );
+
+      if (payment) {
+        console.log("Receipt URL updated successfully:", payment);
+      } else {
+        console.error("Payment record not found for PaymentIntent ID:", paymentIntentId);
+      }
+    } catch (error) {
+      console.error("Error updating payment with receipt URL:", error.message);
+      return res.status(500).send("Error processing receipt URL update");
+    }
+  }
+
   res.json({ received: true });
 });
+
 // Set storage engine
 const storage = multer.diskStorage({
   destination: './uploads', // Directory to store the uploaded images
