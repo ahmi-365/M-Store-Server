@@ -34,66 +34,54 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  if (event.type === 'checkout.session.completed') {
-    const session = event.data.object;
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
 
-    try {
-      // Find or create an order by session ID and store the Payment Intent ID
-      let order = await Order.findOneAndUpdate(
-        { eventId: session.id },
-        { paymentIntentId: session.payment_intent },
-        { new: true, upsert: true }
-      );
+      try {
+        // Find the Order by eventId
+        const order = await Order.findOne({ eventId: session.id });
+        if (!order) {
+          console.error("Order not found for session ID:", session.id);
+          return res.status(404).send("Order not found");
+        }
 
-      if (!order) {
-        console.error("Order not found for session ID:", session.id);
-        return res.status(404).send("Order not found");
+        // Save basic payment details initially
+        const payment = new Payment({
+          paymentId: session.id,
+          orderId: order._id,
+          amount: session.amount_total / 100, // Convert to actual amount
+          currency: session.currency,
+          paymentStatus: 'paid',
+          paymentMethod: session.payment_method_types[0],
+        });
+
+        await payment.save();
+        console.log("Payment saved successfully:", payment);
+
+        // Update order status
+        order.status = 'Paid';
+        await order.save();
+        console.log("Order status updated successfully:", order);
+
+        // Fetch receipt URL using paymentIntent
+        const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+        if (paymentIntent && paymentIntent.latest_charge) {
+          const charge = await stripe.charges.retrieve(paymentIntent.latest_charge);
+          payment.receiptUrl = charge.receipt_url;
+          await payment.save();
+          console.log("Receipt URL updated successfully:", payment);
+        } else {
+          console.error("Charge not found for PaymentIntent ID:", session.payment_intent);
+        }
+      } catch (error) {
+        console.error("Error processing payment or updating order:", error.message);
+        return res.status(500).send("Error processing webhook");
       }
+      break;
 
-      const payment = new Payment({
-        paymentId: session.payment_intent,  // Store Payment Intent ID here
-        orderId: order._id,
-        amount: session.amount_total / 100,
-        currency: session.currency,
-        paymentStatus: 'paid',
-        paymentMethod: session.payment_method_types[0],
-        receiptUrl: null, // Initially null; updated later
-      });
-
-      await payment.save();
-      console.log("Payment saved successfully:", payment);
-
-      order.status = 'Paid';
-      await order.save();
-      console.log("Order status updated successfully:", order);
-    } catch (error) {
-      console.error("Error saving payment or updating order:", error.message);
-      return res.status(500).send("Error processing webhook");
-    }
-  }
-
-  if (event.type === 'charge.succeeded') {
-    const charge = event.data.object;
-    const paymentIntentId = charge.payment_intent;
-    const receiptUrl = charge.receipt_url;
-
-    try {
-      // Find Payment record using paymentIntentId and update with receipt URL
-      const payment = await Payment.findOneAndUpdate(
-        { paymentId: paymentIntentId },
-        { receiptUrl: receiptUrl },
-        { new: true }
-      );
-
-      if (payment) {
-        console.log("Receipt URL updated successfully:", payment);
-      } else {
-        console.error("Payment record not found for PaymentIntent ID:", paymentIntentId);
-      }
-    } catch (error) {
-      console.error("Error updating payment with receipt URL:", error.message);
-      return res.status(500).send("Error processing receipt URL update");
-    }
+    default:
+      console.log(`Unhandled event type ${event.type}`);
   }
 
   res.json({ received: true });
