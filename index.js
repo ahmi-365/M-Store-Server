@@ -57,6 +57,14 @@ app.post('/webhook', async (req, res) => {
         const paymentIntentId = session.payment_intent;
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
+        // Check if charges exist and retrieve receipt_url if available
+        let receiptUrl = null;
+        if (paymentIntent.charges && paymentIntent.charges.data.length > 0) {
+          receiptUrl = paymentIntent.charges.data[0].receipt_url;
+        } else {
+          console.warn("No charges found on PaymentIntent. Receipt URL may be unavailable.");
+        }
+
         const order = await Order.findOne({ eventId: session.id });
         if (!order) {
           console.error("Order not found for session ID:", session.id);
@@ -70,7 +78,7 @@ app.post('/webhook', async (req, res) => {
           currency: session.currency,
           paymentStatus: 'paid',
           paymentMethod: session.payment_method_types[0],
-          receiptUrl: paymentIntent.charges.data[0].receipt_url, // Retrieve receipt_url from the charge
+          receiptUrl: receiptUrl, // Use the retrieved receipt URL if available
         });
 
         await payment.save();
