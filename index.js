@@ -27,7 +27,6 @@ app.post('/webhook', async (req, res) => {
   let event;
 
   try {
-    // Verify the event using the raw body and signature
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
     console.log('Webhook verified:', event);
   } catch (err) {
@@ -35,34 +34,23 @@ app.post('/webhook', async (req, res) => {
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  // Handle the event types you are interested in
   switch (event.type) {
-    case 'payment_intent.succeeded':
-      const paymentIntent = event.data.object;
-      console.log('PaymentIntent was successful!', paymentIntent);
-      // Additional logic for handling successful payment intent can be added here
-      break;
-
-    case 'payment_intent.payment_failed':
-      const failedPaymentIntent = event.data.object;
-      console.log('PaymentIntent failed:', failedPaymentIntent);
-      // Additional logic for handling failed payment intent can be added here
-      break;
-
     case 'checkout.session.completed':
       const session = event.data.object;
 
       try {
-        // Retrieve the PaymentIntent to access receipt_url
         const paymentIntentId = session.payment_intent;
         const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
 
-        // Check if charges exist and retrieve receipt_url if available
+        // Log the paymentIntent to verify charges and receipt_url details
+        console.log("Retrieved PaymentIntent:", JSON.stringify(paymentIntent, null, 2));
+
+        // Check if charges exist and access receipt_url if available
         let receiptUrl = null;
         if (paymentIntent.charges && paymentIntent.charges.data.length > 0) {
           receiptUrl = paymentIntent.charges.data[0].receipt_url;
         } else {
-          console.warn("No charges found on PaymentIntent. Receipt URL may be unavailable.");
+          console.warn("No charges or receipt_url found on PaymentIntent.");
         }
 
         const order = await Order.findOne({ eventId: session.id });
@@ -78,7 +66,7 @@ app.post('/webhook', async (req, res) => {
           currency: session.currency,
           paymentStatus: 'paid',
           paymentMethod: session.payment_method_types[0],
-          receiptUrl: receiptUrl, // Use the retrieved receipt URL if available
+          receiptUrl: receiptUrl, // Save the retrieved receipt URL
         });
 
         await payment.save();
@@ -93,14 +81,13 @@ app.post('/webhook', async (req, res) => {
       }
       break;
 
-    // Handle other event types as needed
     default:
       console.log(`Unhandled event type ${event.type}`);
   }
 
-  // Return a response to acknowledge receipt of the event
   res.json({ received: true });
 });
+
 
 // Set storage engine
 const storage = multer.diskStorage({
