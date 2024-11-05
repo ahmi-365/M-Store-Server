@@ -51,20 +51,9 @@ app.post('/webhook', async (req, res) => {
           paymentId: session.id,
           orderId: order._id,
           amount: session.amount_total / 100, // Convert to actual amount
-          amountReceived: session.amount_total / 100, // Assuming full amount received
           currency: session.currency,
           paymentStatus: 'paid',
           paymentMethod: session.payment_method_types[0],
-          customerName: session.customer_details?.name, // Optional chaining for safety
-          customerEmail: session.customer_details?.email,
-          customerAddress: session.customer_details?.address,
-          metadata: session.metadata,
-          paymentIntentId: session.payment_intent,
-          createdAt: new Date(session.created * 1000), // Convert to Date object
-          description: session.description, // If available
-          transactionId: session.payment_intent, // Transaction ID from Stripe
-          shippingDetails: session.shipping, // If available
-          // Add more fields if necessary
         });
 
         await payment.save();
@@ -98,31 +87,6 @@ app.post('/webhook', async (req, res) => {
   res.json({ received: true });
 });
 
-
-const paymentSchema = new mongoose.Schema({
-  paymentId: { type: String, required: true, unique: true }, // Payment Intent ID
-  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true }, // Reference to the Order
-  amount: { type: Number, required: true }, // Total amount in the smallest currency unit (e.g., cents)
-  amountReceived: { type: Number }, // Total amount received (if different from amount)
-  currency: { type: String, required: true }, // Currency of the payment
-  paymentStatus: { type: String, required: true }, // Status of the payment
-  paymentMethod: { type: String, required: true }, // Payment method used
-  receiptUrl: { type: String }, // URL of the receipt
-  customerName: { type: String }, // Customer's name
-  customerEmail: { type: String }, // Customer's email
-  customerAddress: { type: Object }, // Customer's billing address details
-  metadata: { type: Object }, // Any metadata you wish to store
-  paymentIntentId: { type: String }, // ID of the payment intent
-  createdAt: { type: Date, default: Date.now }, // Date when payment was created
-  description: { type: String }, // Description of the payment
-  transactionId: { type: String }, // Transaction ID from Stripe
-  paymentMethodDetails: { type: Object }, // Details about the payment method used
-  shippingDetails: { type: Object }, // Shipping information, if applicable
-  statusHistory: [{ status: String, updatedAt: Date }], // History of status changes
-  refunded: { type: Boolean, default: false }, // Flag indicating if the payment was refunded
-  refundDetails: { type: Object }, // Details of any refunds issued
-  failureReason: { type: String }, // Reason for payment failure, if applicable
-});
 
 // Set storage engine
 const storage = multer.diskStorage({
@@ -212,7 +176,16 @@ const OrderItem = mongoose.model('OrderItem', new mongoose.Schema({
   selectedSize: String,
   selectedColor: String,
 }));
-
+const Payment = mongoose.model('Payment', new mongoose.Schema({
+  paymentId: { type: String, required: true, unique: true },
+  orderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true },
+  amount: { type: Number, required: true },
+  currency: { type: String, required: true },
+  paymentStatus: { type: String, required: true },
+  paymentMethod: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now },
+  receiptUrl: { type: String },
+}));
 
 
 // Route to create Stripe checkout session
