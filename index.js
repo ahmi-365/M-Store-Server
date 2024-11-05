@@ -42,15 +42,21 @@ app.post('/webhook', async (req, res) => {
       console.log('PaymentIntent was successful!', paymentIntent);
       // Additional logic for handling successful payment intent can be added here
       break;
+
     case 'payment_intent.payment_failed':
       const failedPaymentIntent = event.data.object;
       console.log('PaymentIntent failed:', failedPaymentIntent);
       // Additional logic for handling failed payment intent can be added here
       break;
+
     case 'checkout.session.completed':
       const session = event.data.object;
 
       try {
+        // Retrieve the PaymentIntent to access receipt_url
+        const paymentIntentId = session.payment_intent;
+        const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
         const order = await Order.findOne({ eventId: session.id });
         if (!order) {
           console.error("Order not found for session ID:", session.id);
@@ -64,13 +70,13 @@ app.post('/webhook', async (req, res) => {
           currency: session.currency,
           paymentStatus: 'paid',
           paymentMethod: session.payment_method_types[0],
-          receiptUrl: session.receipt_url,
+          receiptUrl: paymentIntent.charges.data[0].receipt_url, // Retrieve receipt_url from the charge
         });
 
         await payment.save();
         console.log("Payment saved successfully:", payment);
 
-        order.status = 'complete';
+        order.status = 'Paid';
         await order.save();
         console.log("Order status updated successfully:", order);
       } catch (error) {
@@ -78,6 +84,7 @@ app.post('/webhook', async (req, res) => {
         return res.status(500).send("Error processing webhook");
       }
       break;
+
     // Handle other event types as needed
     default:
       console.log(`Unhandled event type ${event.type}`);
