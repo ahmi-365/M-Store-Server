@@ -51,7 +51,7 @@ app.post('/webhook', async (req, res) => {
       }
 
       const payment = new Payment({
-        paymentId: session.id,
+        paymentId: session.payment_intent,  // Store Payment Intent ID here
         orderId: order._id,
         amount: session.amount_total / 100,
         currency: session.currency,
@@ -98,6 +98,7 @@ app.post('/webhook', async (req, res) => {
 
   res.json({ received: true });
 });
+
 
 // Set storage engine
 const storage = multer.diskStorage({
