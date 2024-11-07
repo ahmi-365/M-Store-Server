@@ -305,15 +305,12 @@ app.get('/api/payments/:id', async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
-
-// app.get('*', (req, res) => {
-//   res.sendFile(path.resolve(__dirname, 'public', 'index.html'));
-// });
-
 // Import and use route modules
 const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
+const subAdminRoutes = require('./routes/subAdminRoutes');
+const verifyAdmin = require('./middleware/authMiddleware');
 app.use("/api/coupons", couponRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
