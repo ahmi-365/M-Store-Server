@@ -1,11 +1,11 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const SubAdmin = require('../models/Admin');
+const SubAdmin = require('../models/Admin');  // Make sure you have this model for sub-admins
 const router = express.Router();
 
 // Middleware to check if the user is an admin (based on session)
 function verifyAdmin(req, res, next) {
- console.log(req.session);  // Check the session data
+  console.log('Session data:', req.session);  // Check the session data
 
   if (!req.session.user || req.session.user.role !== 'Admin') {
     return res.status(403).json({ message: "Unauthorized" });
@@ -22,7 +22,6 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Admin not found' });
     }
 
-    // Check if password matches
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
@@ -30,6 +29,7 @@ router.post('/login', async (req, res) => {
 
     // Store user data in session
     req.session.user = { id: admin._id, email: admin.email, role: admin.role };
+    console.log('Admin logged in, session:', req.session); // Debug session data
     res.json({ message: 'Logged in successfully' });
 
   } catch (error) {
@@ -58,7 +58,8 @@ router.post('/subadmins', verifyAdmin, async (req, res) => {
       return res.status(400).json({ message: "Sub-admin with this email already exists" });
     }
 
-    const newSubAdmin = new SubAdmin({ email, role, password });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const newSubAdmin = new SubAdmin({ email, role, password: hashedPassword });
     await newSubAdmin.save();
     res.status(201).json(newSubAdmin);
   } catch (error) {
