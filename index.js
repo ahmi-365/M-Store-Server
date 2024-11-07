@@ -307,11 +307,13 @@ app.get('/api/payments/:id', async (req, res) => {
 });
 // Import and use route modules
 const userRoutes = require('./routes/userRoutes');
+
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
 const subAdminRoutes = require('./routes/subAdminRoutes');
 const verifyAdmin = require('./middleware/authMiddleware');
 app.use("/api/coupons", couponRoutes);
+app.use('/api/admin', verifyAdmin, subAdminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.listen(PORT, () => {
