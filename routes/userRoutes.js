@@ -12,7 +12,7 @@ const authenticateUser = (req, res, next) => {
     next();
 };
 
-// User signup
+// User signup (for regular users, no direct admin creation here)
 router.post('/signup', async (req, res) => {
     const { email, password } = req.body;
 
@@ -27,17 +27,16 @@ router.post('/signup', async (req, res) => {
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = new User({ email, password: hashedPassword });
+        const newUser = new User({ email, password: hashedPassword, isAdmin: false }); // New users are not admins by default
         await newUser.save();
         res.status(201).json({ message: 'User registered successfully!' });
     } catch (error) {
-        console.error('Signup error:', error); // Log the error for debugging
+        console.error('Signup error:', error);
         res.status(500).json({ message: 'Internal server error' });
     }
 });
 
-
-
+// User login
 router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
@@ -52,8 +51,8 @@ router.post('/login', async (req, res) => {
             return res.status(401).json({ message: 'Invalid email or password' });
         }
 
-        // Determine admin status
-        const isAdmin = email === 'admin@gmail.com';
+        // Check if the user is an admin based on the isAdmin field
+        const isAdmin = user.isAdmin;
 
         // Store user info in session
         req.session.user = { email: user.email, isAdmin };
@@ -71,32 +70,31 @@ router.post('/login', async (req, res) => {
     }
 });
 
-
 // Update user data (protected route)
-router.put('/update', authenticateUser, async (req, res) => {
-    const { email, newData } = req.body; // newData could be any other user data to update
+// router.put('/update', authenticateUser, async (req, res) => {
+//     const { email, newData } = req.body; // newData could be any other user data to update
 
-    try {
-        const user = await User.findOneAndUpdate({ email }, newData, { new: true });
-        if (!user) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-        res.json(user); // Send back the updated user data
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update user' });
-    }
-});
+//     try {
+//         const user = await User.findOneAndUpdate({ email }, newData, { new: true });
+//         if (!user) {
+//             return res.status(404).json({ error: 'User not found' });
+//         }
+//         res.json(user); // Send back the updated user data
+//     } catch (error) {
+//         res.status(500).json({ error: 'Failed to update user' });
+//     }
+// });
 
-// Fetch all users (optional, can be protected)
-router.get('/', authenticateUser, async (req, res) => {
-    try {
-        const users = await User.find({}, 'email');
-        res.json(users);
-    } catch (error) {
-        console.error('Failed to fetch users:', error);
-        res.status(500).json({ message: 'Failed to fetch users.' });
-    }
-});
+// // Fetch all users (optional, can be protected)
+// router.get('/', authenticateUser, async (req, res) => {
+//     try {
+//         const users = await User.find({}, 'email');
+//         res.json(users);
+//     } catch (error) {
+//         console.error('Failed to fetch users:', error);
+//         res.status(500).json({ message: 'Failed to fetch users.' });
+//     }
+// });
 
 // Logout user
 router.post('/logout', (req, res) => {
