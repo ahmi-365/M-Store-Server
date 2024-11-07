@@ -144,7 +144,7 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use(session({
     secret: process.env.SESSION_SECRET,
     resave: false,
-    saveUninitialized: true,
+    saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
     cookie: { secure: false }, // Set to true if using HTTPS
   }));
@@ -311,9 +311,8 @@ const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
 const subAdminRoutes = require('./routes/subAdminRoutes');
-const verifyAdmin = require('./middleware/authMiddleware');
 app.use("/api/coupons", couponRoutes);
-app.use('/api/admin', verifyAdmin, subAdminRoutes);
+app.use('/api/admin', subAdminRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.listen(PORT, () => {
