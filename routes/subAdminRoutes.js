@@ -6,13 +6,14 @@ const router = express.Router();
 // Middleware to restrict access based on role
 function checkRole(requiredRole) {
   return (req, res, next) => {
-    console.log("Session data:", req.session.user);  // Log session data
+    console.log("Session data before role check:", req.session.user);  // Check session data
     if (!req.session.user || req.session.user.role !== requiredRole) {
       return res.status(403).json({ message: "Forbidden: You don't have access to this resource" });
     }
     next();
   };
 }
+
 
 // Admin login route
 // Admin login route

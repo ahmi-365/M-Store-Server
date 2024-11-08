@@ -144,9 +144,11 @@ mongoose.connect(process.env.MONGO_URI, {
 app.use(session({
   secret: 'store',
   resave: false,
-  saveUninitialized: true,
-  cookie: { secure: false, httpOnly: true }, // Set to `secure: true` in production with HTTPS
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  cookie: { secure: process.env.NODE_ENV === 'production', httpOnly: true, maxAge: 3600000 }
 }));
+
 
 // Models setup
 const Order = mongoose.model('Order', new mongoose.Schema({
