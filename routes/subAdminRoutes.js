@@ -8,28 +8,36 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    let admin = await SubAdmin.findOne({ email });
+    if (admin) {
+      const isMatch = await bcrypt.compare(password, admin.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+      req.session.user = { id: admin._id, email: admin.email, role: admin.role };
+      return res.json({ message: 'Admin logged in successfully', redirect: '/admin-dashboard' });
+    }
     const user = await User.findOne({ email });
+    if (user) {
+      // User found, check password
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
 
-    if (!user || !await bcrypt.compare(password, user.password)) {
-      return res.status(400).json({ message: 'Invalid email or password' });
+      // Store user data in the session and send the home page redirect
+      req.session.user = { id: user._id, email: user.email, role: 'User' };
+      return res.json({ message: 'User logged in successfully', redirect: '/home' });
     }
 
-    const token = jwt.sign(
-      { _id: user._id, role: user.role },
-      'store',
-      { expiresIn: '1h' }
-    );
+    // If neither an admin nor a user is found
+    return res.status(400).json({ message: 'User not found' });
 
-    res.json({
-      token,
-      user: { _id: user._id, email: user.email, role: user.role }
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: 'Server error' });
+  } catch (error) {
+    console.error("Error logging in:", error);
+    res.status(500).json({ message: 'Error logging in' });
   }
 });
-
 
 // Fetch all sub-admins (only accessible by an admin)
 router.get('/subadmins',  async (req, res) => {
