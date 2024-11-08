@@ -117,7 +117,7 @@ app.use(cors({
     'https://e-commerace-store.onrender.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true,
+  credentials: true, // Allow cookies and sessions
   optionsSuccessStatus: 200 // For legacy browser support
 }));
 app.use(express.json());
