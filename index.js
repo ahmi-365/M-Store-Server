@@ -111,23 +111,14 @@ const upload = multer({
   },
 });
 // Configure CORS
-// Use CORS before session middleware
 app.use(cors({
-  origin: ['http://localhost:5173', 'https://e-commerace-store.onrender.com'],
+  origin: [
+    'http://localhost:5173',
+    'https://e-commerace-store.onrender.com'
+  ],
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  credentials: true, // Allow credentials (cookies) to be sent
-  optionsSuccessStatus: 200
-}));
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'default_secret', // Use env secret if available
-  resave: false,
-  saveUninitialized: false,
-  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
-  cookie: {
-    secure: process.env.NODE_ENV === 'production', // Use secure cookies only in production
-    httpOnly: true,
-    maxAge: 3600000 // Session expiry time (1 hour)
-  }
+  credentials: true,
+  optionsSuccessStatus: 200 // For legacy browser support
 }));
 app.use(express.json());
 // Error handler middleware
@@ -141,11 +132,22 @@ app.use(bodyParser.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Database connection
 mongoose.connect(process.env.MONGO_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
   tls: true,
   tlsAllowInvalidCertificates: true,
 })
   .then(() => console.log('MongoDB connected successfully'))
   .catch(err => console.error('MongoDB connection error:', err));
+
+// Session configuration for production use
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+    cookie: { secure: false }, // Set to true if using HTTPS
+  }));
 // Models setup
 const Order = mongoose.model('Order', new mongoose.Schema({
   orderId: { type: String, default: uuidv4, required: true, unique: true },
