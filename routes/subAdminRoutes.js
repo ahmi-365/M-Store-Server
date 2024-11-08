@@ -6,6 +6,7 @@ const router = express.Router();
 // Middleware to restrict access based on role
 function checkRole(requiredRole) {
   return (req, res, next) => {
+    console.log("Session data:", req.session.user);  // Log session data
     if (!req.session.user || req.session.user.role !== requiredRole) {
       return res.status(403).json({ message: "Forbidden: You don't have access to this resource" });
     }
@@ -13,6 +14,7 @@ function checkRole(requiredRole) {
   };
 }
 
+// Admin login route
 // Admin login route
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -24,6 +26,7 @@ router.post('/login', async (req, res) => {
       if (!isMatch) return res.status(400).json({ message: 'Invalid credentials' });
 
       req.session.user = { id: admin._id, email: admin.email, role: admin.role };
+      console.log("User session:", req.session.user);  // Add this to confirm session data
       return res.json({ message: 'Admin logged in successfully', role: admin.role });
     }
     return res.status(400).json({ message: 'User not found' });
