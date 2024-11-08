@@ -1,15 +1,28 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const { check, validationResult } = require('express-validator');
-const SubAdmin = require('../models/Admin');  // Make sure you have this model for sub-admins
+const jwt = require('jsonwebtoken');
+const SubAdmin = require('../models/Admin');  // Ensure this model exists
+const User = require('../models/User');      // Ensure you have a User model for regular users
 const router = express.Router();
 
-// Middleware to check if the user is an admin
+// Middleware to check if the user is an admin using JWT token
 const isAdmin = (req, res, next) => {
-  if (!req.session.user || req.session.user.role !== 'Admin') {
-    return res.status(403).json({ message: 'Access denied. Admins only.' });
+  const token = req.header('Authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return res.status(401).json({ message: 'Authorization token is required' });
   }
-  next();
+
+  try {
+    const decoded = jwt.verify(token, 'your-secret-key'); // Use your secret key
+    if (decoded.role !== 'Admin') {
+      return res.status(403).json({ message: 'Access denied. Admins only.' });
+    }
+    req.user = decoded;  // Store decoded user info for further use in route handlers
+    next();
+  } catch (error) {
+    return res.status(401).json({ message: 'Invalid or expired token' });
+  }
 };
 
 // Admin login route
@@ -17,35 +30,30 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // First, check if the email exists in the SubAdmin collection (for admins)
     let admin = await SubAdmin.findOne({ email });
     if (admin) {
-      // Admin found, check password
       const isMatch = await bcrypt.compare(password, admin.password);
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      // Store admin data in the session and send the admin dashboard redirect
-      req.session.user = { id: admin._id, email: admin.email, role: admin.role };
-      return res.json({ message: 'Admin logged in successfully', redirect: '/admin-dashboard' });
+      // Issue JWT token and send response
+      const token = jwt.sign({ id: admin._id, email: admin.email, role: admin.role }, 'your-secret-key', { expiresIn: '1h' });
+      return res.json({ message: 'Admin logged in successfully', token, redirect: '/admin-dashboard' });
     }
 
     // If not found in SubAdmin, check the User collection (for regular users)
     const user = await User.findOne({ email });
     if (user) {
-      // User found, check password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      // Store user data in the session and send the home page redirect
-      req.session.user = { id: user._id, email: user.email, role: 'User' };
-      return res.json({ message: 'User logged in successfully', redirect: '/home' });
+      const token = jwt.sign({ id: user._id, email: user.email, role: 'User' }, 'your-secret-key', { expiresIn: '1h' });
+      return res.json({ message: 'User logged in successfully', token, redirect: '/home' });
     }
 
-    // If neither an admin nor a user is found
     return res.status(400).json({ message: 'User not found' });
 
   } catch (error) {
@@ -68,7 +76,6 @@ router.get('/subadmins', isAdmin, async (req, res) => {
 router.post('/subadmins', 
   isAdmin, 
   [
-    // Validation checks for incoming data
     check('email').isEmail().withMessage('Please provide a valid email'),
     check('role').isIn(['Admin', 'Product Admin']).withMessage('Role must be "Admin" or "Product Admin"'),
     check('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters long')
@@ -83,7 +90,6 @@ router.post('/subadmins',
     const { email, role, password } = req.body;
 
     try {
-      // Check if sub-admin already exists
       const existingAdmin = await SubAdmin.findOne({ email });
       if (existingAdmin) {
         return res.status(400).json({ message: "Sub-admin with this email already exists" });
@@ -115,23 +121,19 @@ router.put('/subadmins/:id', isAdmin, async (req, res) => {
   const { email, role, password } = req.body;
 
   try {
-    // Find the sub-admin by ID
     const adminToUpdate = await SubAdmin.findById(id);
     if (!adminToUpdate) {
       return res.status(404).json({ message: "Sub-admin not found" });
     }
 
-    // Update fields only if they are provided in the request body
     if (email) adminToUpdate.email = email;
     if (role) adminToUpdate.role = role;
 
-    // If a new password is provided, hash it before saving
     if (password) {
       const salt = await bcrypt.genSalt(10);
       adminToUpdate.password = await bcrypt.hash(password, salt);
     }
 
-    // Save the updated sub-admin
     await adminToUpdate.save();
     res.status(200).json({ message: "Sub-admin updated successfully" });
   } catch (error) {
