@@ -3,15 +3,15 @@ const bcrypt = require('bcryptjs');
 const SubAdmin = require('../models/Admin');  // Make sure you have this model for sub-admins
 const router = express.Router();
 
-// Middleware to check if the user is an admin (based on session)
-function verifyAdmin(req, res, next) {
-  console.log('Session data:', req.session);  // Check the session data
+// // Middleware to check if the user is an admin (based on session)
+// function verifyAdmin(req, res, next) {
+//   console.log('Session data:', req.session);  // Check the session data
 
-  if (!req.session.user || req.session.user.role !== 'Admin') {
-    return res.status(403).json({ message: "Unauthorized" });
-  }
-  next();
-}
+//   if (!req.session.user || req.session.user.role !== 'Admin') {
+//     return res.status(403).json({ message: "Unauthorized" });
+//   }
+//   next();
+// }
 
 // Admin login route
 router.post('/login', async (req, res) => {
@@ -29,13 +29,15 @@ router.post('/login', async (req, res) => {
 
     // Store user data in session
     req.session.user = { id: admin._id, email: admin.email, role: admin.role };
-    console.log('Admin logged in, session:', req.session); // Debug session data
+    console.log('Session created:', req.session);  // Debug session data
+
     res.json({ message: 'Logged in successfully' });
 
   } catch (error) {
     res.status(500).json({ message: 'Error logging in' });
   }
 });
+
 
 // Fetch all sub-admins (only accessible by an admin)
 router.get('/subadmins', verifyAdmin, async (req, res) => {
