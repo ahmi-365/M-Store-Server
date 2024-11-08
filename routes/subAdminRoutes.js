@@ -40,7 +40,7 @@ router.post('/login', async (req, res) => {
 
 
 // Fetch all sub-admins (only accessible by an admin)
-router.get('/subadmins', verifyAdmin, async (req, res) => {
+router.get('/subadmins',  async (req, res) => {
   try {
     const subAdmins = await SubAdmin.find({});
     res.status(200).json(subAdmins);
@@ -50,7 +50,7 @@ router.get('/subadmins', verifyAdmin, async (req, res) => {
 });
 
 // Create a new sub-admin (only accessible by an admin)
-router.post('/subadmins', verifyAdmin, async (req, res) => {
+router.post('/subadmins', async (req, res) => {
   const { email, role, password } = req.body;
 
   try {
@@ -70,7 +70,7 @@ router.post('/subadmins', verifyAdmin, async (req, res) => {
 });
 
 // Delete a sub-admin by ID (only accessible by an admin)
-router.delete('/subadmins/:id', verifyAdmin, async (req, res) => {
+router.delete('/subadmins/:id', async (req, res) => {
   try {
     await SubAdmin.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Sub-admin deleted successfully" });
