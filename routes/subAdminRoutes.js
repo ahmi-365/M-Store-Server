@@ -1,127 +1,96 @@
+// routes/productRoutes.js
 const express = require('express');
-const bcrypt = require('bcryptjs');
-const SubAdmin = require('../models/Admin');  // Make sure you have this model for sub-admins
+const authorizeRole = require('../middleware/authorizeRole');
 const router = express.Router();
+const Product = require('../models/Product'); // Assuming Product is a Mongoose model
 
-// // Middleware to check if the user is an admin (based on session)
-// function verifyAdmin(req, res, next) {
-//   console.log('Session data:', req.session);  // Check the session data
+// Middleware to check if user is a "Products Admin"
+const productsAdminOnly = authorizeRole('Products Admin');
 
-//   if (!req.session.user || req.session.user.role !== 'Admin') {
-//     return res.status(403).json({ message: "Unauthorized" });
-//   }
-//   next();
-// }
-
-// Admin login route
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    // First, check if the email exists in the SubAdmin collection (for admins)
-    let admin = await SubAdmin.findOne({ email });
-    if (admin) {
-      // Admin found, check password
-      const isMatch = await bcrypt.compare(password, admin.password);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
-
-      // Store admin data in the session and send the admin dashboard redirect
-      req.session.user = { id: admin._id, email: admin.email, role: admin.role };
-      return res.json({ message: 'Admin logged in successfully', redirect: '/admin-dashboard' });
+// Route: Fetch all products (GET /api/products)
+router.get('/', productsAdminOnly, async (req, res) => {
+    try {
+        const products = await Product.find(); // Fetch all products from the database
+        res.status(200).json(products);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch products', error });
     }
-
-    // If not found in SubAdmin, check the User collection (for regular users)
-    const user = await User.findOne({ email });
-    if (user) {
-      // User found, check password
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
-
-      // Store user data in the session and send the home page redirect
-      req.session.user = { id: user._id, email: user.email, role: 'User' };
-      return res.json({ message: 'User logged in successfully', redirect: '/home' });
-    }
-
-    // If neither an admin nor a user is found
-    return res.status(400).json({ message: 'User not found' });
-
-  } catch (error) {
-    console.error("Error logging in:", error);
-    res.status(500).json({ message: 'Error logging in' });
-  }
 });
 
-// Fetch all sub-admins (only accessible by an admin)
-router.get('/subadmins',  async (req, res) => {
-  try {
-    const subAdmins = await SubAdmin.find({});
-    res.status(200).json(subAdmins);
-  } catch (error) {
-    res.status(500).json({ message: "Error fetching sub-admins" });
-  }
-});
+// Route: Create a new product (POST /api/products)
+router.post('/', productsAdminOnly, async (req, res) => {
+    const { name, description, price, stock, category } = req.body;
 
-// Create a new sub-admin (only accessible by an admin)
-router.post('/subadmins', async (req, res) => {
-  const { email, role, password } = req.body;
+    try {
+        const newProduct = new Product({
+            name,
+            description,
+            price,
+            stock,
+            category
+        });
 
-  try {
-    // Check if sub-admin already exists
-    const existingAdmin = await SubAdmin.findOne({ email });
-    if (existingAdmin) {
-      return res.status(400).json({ message: "Sub-admin with this email already exists" });
+        const savedProduct = await newProduct.save(); // Save the new product to the database
+        res.status(201).json({ message: 'Product created successfully', product: savedProduct });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to create product', error });
     }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newSubAdmin = new SubAdmin({ email, role, password: hashedPassword });
-    await newSubAdmin.save();
-    res.status(201).json(newSubAdmin);
-  } catch (error) {
-    res.status(500).json({ message: "Error creating sub-admin" });
-  }
 });
 
-// Delete a sub-admin by ID (only accessible by an admin)
-router.delete('/subadmins/:id', async (req, res) => {
-  try {
-    await SubAdmin.findByIdAndDelete(req.params.id);
-    res.status(200).json({ message: "Sub-admin deleted successfully" });
-  } catch (error) {
-    res.status(500).json({ message: "Error deleting sub-admin" });
-  }
-});
-// Update a sub-admin by ID (only accessible by an admin)
-router.put('/subadmins/:id', async (req, res) => {
-  const { id } = req.params;
-  const { email, role, password } = req.body;
+// Route: Update a product (PUT /api/products/:id)
+router.put('/:id', productsAdminOnly, async (req, res) => {
+    const { id } = req.params;
+    const { name, description, price, stock, category } = req.body;
 
-  try {
-    // Find the sub-admin by ID
-    const adminToUpdate = await SubAdmin.findById(id);
-    if (!adminToUpdate) {
-      return res.status(404).json({ message: "Sub-admin not found" });
+    try {
+        const updatedProduct = await Product.findByIdAndUpdate(
+            id,
+            { name, description, price, stock, category },
+            { new: true }
+        );
+
+        if (!updatedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        res.status(200).json({ message: 'Product updated successfully', product: updatedProduct });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to update product', error });
     }
-
-    // Update fields only if they are provided in the request body
-    if (email) adminToUpdate.email = email;
-    if (role) adminToUpdate.role = role;
-
-    // If a new password is provided, hash it before saving
-    if (password) {
-      const salt = await bcrypt.genSalt(10);
-      adminToUpdate.password = await bcrypt.hash(password, salt);
-    }
-
-    // Save the updated sub-admin
-    await adminToUpdate.save();
-    res.status(200).json({ message: "Sub-admin updated successfully" });
-  } catch (error) {
-    console.error("Error updating sub-admin:", error);
-    res.status(500).json({ message: "Error updating sub-admin" });
-  }
 });
+
+// Route: Delete a product (DELETE /api/products/:id)
+router.delete('/:id', productsAdminOnly, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const deletedProduct = await Product.findByIdAndDelete(id);
+
+        if (!deletedProduct) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        res.status(200).json({ message: 'Product deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to delete product', error });
+    }
+});
+
+// Route: Get a single product by ID (GET /api/products/:id)
+router.get('/:id', productsAdminOnly, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const product = await Product.findById(id);
+
+        if (!product) {
+            return res.status(404).json({ message: 'Product not found' });
+        }
+
+        res.status(200).json(product);
+    } catch (error) {
+        res.status(500).json({ message: 'Failed to fetch product', error });
+    }
+});
+
 module.exports = router;
