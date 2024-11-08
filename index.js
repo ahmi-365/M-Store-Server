@@ -110,7 +110,27 @@ const upload = multer({
     }
   },
 });
-
+// Configure CORS
+// Use CORS before session middleware
+app.use(cors({
+  origin: ['http://localhost:5173', 'https://e-commerace-store.onrender.com'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true, // Allow credentials (cookies) to be sent
+  optionsSuccessStatus: 200
+}));
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'default_secret', // Use env secret if available
+  resave: false,
+  saveUninitialized: false,
+  store: MongoStore.create({ mongoUrl: process.env.MONGO_URI }),
+  cookie: {
+    secure: process.env.NODE_ENV === 'production', // Use secure cookies only in production
+    httpOnly: true,
+    maxAge: 3600000 // Session expiry time (1 hour)
+  }
+}));
+app.use(express.json());
+// Error handler middleware
 app.use((err, req, res, next) => {
   console.error('Error occurred:', err.message); // Log the error message
   res.status(500).json({ error: 'An internal server error occurred.' }); // Send a generic error response
