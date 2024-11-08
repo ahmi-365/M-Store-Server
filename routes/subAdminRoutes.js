@@ -3,19 +3,17 @@ const bcrypt = require('bcryptjs');
 const SubAdmin = require('../models/Admin');
 const router = express.Router();
 
-// Middleware to restrict access based on role
-function checkRole(requiredRole) {
-  return (req, res, next) => {
-    console.log("Session data before role check:", req.session.user);  // Check session data
-    if (!req.session.user || req.session.user.role !== requiredRole) {
-      return res.status(403).json({ message: "Forbidden: You don't have access to this resource" });
-    }
-    next();
-  };
-}
+// // Middleware to restrict access based on role
+// function checkRole(requiredRole) {
+//   return (req, res, next) => {
+//     console.log("Session data before role check:", req.session.user);  // Check session data
+//     if (!req.session.user || req.session.user.role !== requiredRole) {
+//       return res.status(403).json({ message: "Forbidden: You don't have access to this resource" });
+//     }
+//     next();
+//   };
+// }
 
-
-// Admin login route
 // Admin login route
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
@@ -38,7 +36,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Fetch all sub-admins (only accessible by an admin)
-router.get('/subadmins', checkRole('Admin'), async (req, res) => {
+router.get('/subadmins', async (req, res) => {
   try {
     const subAdmins = await SubAdmin.find({});
     res.status(200).json(subAdmins);
@@ -48,7 +46,7 @@ router.get('/subadmins', checkRole('Admin'), async (req, res) => {
 });
 
 // Create a new sub-admin (only accessible by an admin)
-router.post('/subadmins', checkRole('Admin'), async (req, res) => {
+router.post('/subadmins', async (req, res) => {
   const { email, role, password } = req.body;
 
   try {
@@ -65,7 +63,7 @@ router.post('/subadmins', checkRole('Admin'), async (req, res) => {
 });
 
 // Delete a sub-admin by ID (only accessible by an admin)
-router.delete('/subadmins/:id', checkRole('Admin'), async (req, res) => {
+router.delete('/subadmins/:id', async (req, res) => {
   try {
     await SubAdmin.findByIdAndDelete(req.params.id);
     res.status(200).json({ message: "Sub-admin deleted successfully" });
@@ -75,7 +73,7 @@ router.delete('/subadmins/:id', checkRole('Admin'), async (req, res) => {
 });
 
 // Update a sub-admin by ID (only accessible by an admin)
-router.put('/subadmins/:id', checkRole('Admin'), async (req, res) => {
+router.put('/subadmins/:id', async (req, res) => {
   const { id } = req.params;
   const { email, role, password } = req.body;
 
@@ -100,7 +98,7 @@ router.put('/subadmins/:id', checkRole('Admin'), async (req, res) => {
 });
 
 // Product Management (only accessible by Product Admin)
-router.get('/products', checkRole('Product Admin'), async (req, res) => {
+router.get('/products', async (req, res) => {
   try {
     // Replace this with actual logic to fetch products from the database
     res.status(200).json({ message: 'Product list retrieved successfully' });
@@ -109,7 +107,7 @@ router.get('/products', checkRole('Product Admin'), async (req, res) => {
   }
 });
 
-router.post('/products', checkRole('Product Admin'), async (req, res) => {
+router.post('/products', async (req, res) => {
   try {
     // Replace this with actual logic to add a new product to the database
     res.status(201).json({ message: 'Product added successfully' });
@@ -118,7 +116,7 @@ router.post('/products', checkRole('Product Admin'), async (req, res) => {
   }
 });
 
-router.put('/products/:id', checkRole('Product Admin'), async (req, res) => {
+router.put('/products/:id',async (req, res) => {
   try {
     // Replace this with actual logic to update a product by its ID
     res.status(200).json({ message: 'Product updated successfully' });
@@ -127,7 +125,7 @@ router.put('/products/:id', checkRole('Product Admin'), async (req, res) => {
   }
 });
 
-router.delete('/products/:id', checkRole('Product Admin'), async (req, res) => {
+router.delete('/products/:id', async (req, res) => {
   try {
     // Replace this with actual logic to delete a product by its ID
     res.status(200).json({ message: 'Product deleted successfully' });
