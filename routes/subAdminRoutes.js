@@ -16,28 +16,44 @@ const router = express.Router();
 // Admin login route
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
+
   try {
-    const admin = await SubAdmin.findOne({ email });
-    if (!admin) {
-      return res.status(400).json({ message: 'Admin not found' });
+    // First, check if the email exists in the SubAdmin collection (for admins)
+    let admin = await SubAdmin.findOne({ email });
+    if (admin) {
+      // Admin found, check password
+      const isMatch = await bcrypt.compare(password, admin.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+
+      // Store admin data in the session and send the admin dashboard redirect
+      req.session.user = { id: admin._id, email: admin.email, role: admin.role };
+      return res.json({ message: 'Admin logged in successfully', redirect: '/admin-dashboard' });
     }
 
-    const isMatch = await bcrypt.compare(password, admin.password);
-    if (!isMatch) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+    // If not found in SubAdmin, check the User collection (for regular users)
+    const user = await User.findOne({ email });
+    if (user) {
+      // User found, check password
+      const isMatch = await bcrypt.compare(password, user.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+
+      // Store user data in the session and send the home page redirect
+      req.session.user = { id: user._id, email: user.email, role: 'User' };
+      return res.json({ message: 'User logged in successfully', redirect: '/home' });
     }
 
-    // Store user data in session
-    req.session.user = { id: admin._id, email: admin.email, role: admin.role };
-    console.log('Session created:', req.session);  // Debug session data
-
-    res.json({ message: 'Logged in successfully' });
+    // If neither an admin nor a user is found
+    return res.status(400).json({ message: 'User not found' });
 
   } catch (error) {
+    console.error("Error logging in:", error);
     res.status(500).json({ message: 'Error logging in' });
   }
 });
-
 
 // Fetch all sub-admins (only accessible by an admin)
 router.get('/subadmins',  async (req, res) => {
@@ -78,5 +94,34 @@ router.delete('/subadmins/:id', async (req, res) => {
     res.status(500).json({ message: "Error deleting sub-admin" });
   }
 });
+// Update a sub-admin by ID (only accessible by an admin)
+router.put('/subadmins/:id', async (req, res) => {
+  const { id } = req.params;
+  const { email, role, password } = req.body;
 
+  try {
+    // Find the sub-admin by ID
+    const adminToUpdate = await SubAdmin.findById(id);
+    if (!adminToUpdate) {
+      return res.status(404).json({ message: "Sub-admin not found" });
+    }
+
+    // Update fields only if they are provided in the request body
+    if (email) adminToUpdate.email = email;
+    if (role) adminToUpdate.role = role;
+
+    // If a new password is provided, hash it before saving
+    if (password) {
+      const salt = await bcrypt.genSalt(10);
+      adminToUpdate.password = await bcrypt.hash(password, salt);
+    }
+
+    // Save the updated sub-admin
+    await adminToUpdate.save();
+    res.status(200).json({ message: "Sub-admin updated successfully" });
+  } catch (error) {
+    console.error("Error updating sub-admin:", error);
+    res.status(500).json({ message: "Error updating sub-admin" });
+  }
+});
 module.exports = router;
