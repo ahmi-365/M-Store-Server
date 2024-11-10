@@ -5,17 +5,6 @@ const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin mo
 const User = require('../models/User'); // Regular user model
 const router = express.Router();
 
-// Middleware to authenticate and verify JWT
-const authenticateToken = (req, res, next) => {
-  const token = req.headers['authorization']?.split(' ')[1];  // Extract token from Authorization header
-  if (!token) return res.status(401).json({ message: 'Access denied' });
-
-  jwt.verify(token, process.env.JWT_SECRET, (err, user) => {
-    if (err) return res.status(403).json({ message: 'Invalid token' });
-    req.user = user;  // Attach user to request object
-    next();  // Continue to next middleware or route handler
-  });
-};
 
 // Admin login route
 router.post('/login', async (req, res) => {
@@ -81,7 +70,7 @@ router.post('/login', async (req, res) => {
 });
 
 // Fetch all sub-admins (only accessible by an admin)
-router.get('/subadmins', authenticateToken, async (req, res) => {
+router.get('/subadmins', async (req, res) => {
   if (req.user.role !== 'Admin') {
     return res.status(403).json({ message: 'Forbidden: Only admins can access sub-admins' });
   }
@@ -119,7 +108,7 @@ router.post('/subadmins', authenticateToken, async (req, res) => {
 });
 
 // Delete a sub-admin by ID (only accessible by an admin)
-router.delete('/subadmins/:id', authenticateToken, async (req, res) => {
+router.delete('/subadmins/:id', async (req, res) => {
   if (req.user.role !== 'Admin') {
     return res.status(403).json({ message: 'Forbidden: Only admins can delete sub-admins' });
   }
@@ -133,7 +122,7 @@ router.delete('/subadmins/:id', authenticateToken, async (req, res) => {
 });
 
 // Update a sub-admin by ID (only accessible by an admin)
-router.put('/subadmins/:id', authenticateToken, async (req, res) => {
+router.put('/subadmins/:id', async (req, res) => {
   if (req.user.role !== 'Admin') {
     return res.status(403).json({ message: 'Forbidden: Only admins can update sub-admins' });
   }
