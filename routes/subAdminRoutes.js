@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const SubAdmin = require('../models/Admin');  // Make sure you have this model for sub-admins
+const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin model
+const User = require('../models/User'); // Regular user model
 const router = express.Router();
 
 // Admin login route
@@ -8,29 +9,40 @@ router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // First, check if the email matches an admin (sub-admin)
     let admin = await SubAdmin.findOne({ email });
     if (admin) {
       const isMatch = await bcrypt.compare(password, admin.password);
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
-      req.session.user = { id: admin._id, email: admin.email, role: admin.role };
-      return res.json({ message: 'Admin logged in successfully', redirect: '/admin-dashboard' });
+      return res.json({ 
+        message: 'Admin logged in successfully', 
+        redirect: '/admin-dashboard',
+        userId: admin._id, 
+        email: admin.email,
+        role: admin.role 
+      });
     }
+
+    // If no admin is found, check for a regular user
     const user = await User.findOne({ email });
     if (user) {
-      // User found, check password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      // Store user data in the session and send the home page redirect
-      req.session.user = { id: user._id, email: user.email, role: 'User' };
-      return res.json({ message: 'User logged in successfully', redirect: '/home' });
+      return res.json({ 
+        message: 'User logged in successfully', 
+        redirect: '/home', 
+        userId: user._id,
+        email: user.email,
+        role: 'User'
+      });
     }
 
-    // If neither an admin nor a user is found
+    // If neither an admin nor user exists with that email
     return res.status(400).json({ message: 'User not found' });
 
   } catch (error) {
@@ -38,6 +50,7 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Error logging in' });
   }
 });
+
 
 // Fetch all sub-admins (only accessible by an admin)
 router.get('/subadmins',  async (req, res) => {
