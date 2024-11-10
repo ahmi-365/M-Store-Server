@@ -84,7 +84,7 @@ router.get('/subadmins', async (req, res) => {
 });
 
 // Create a new sub-admin (only accessible by an admin)
-router.post('/subadmins', authenticateToken, async (req, res) => {
+router.post('/subadmins', async (req, res) => {
   if (req.user.role !== 'Admin') {
     return res.status(403).json({ message: 'Forbidden: Only admins can create sub-admins' });
   }
