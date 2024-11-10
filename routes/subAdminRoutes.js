@@ -3,46 +3,56 @@ const bcrypt = require('bcryptjs');
 const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin model
 const User = require('../models/User'); // Regular user model
 const router = express.Router();
+const jwt = require('jsonwebtoken');
 
 // Admin login route
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // First, check if the email matches an admin (sub-admin)
-    let admin = await SubAdmin.findOne({ email });
-    if (admin) {
-      const isMatch = await bcrypt.compare(password, admin.password);
-      if (!isMatch) {
-        return res.status(400).json({ message: 'Invalid credentials' });
-      }
-      return res.json({ 
-        message: 'Admin logged in successfully', 
-        redirect: '/admin-dashboard',
-        userId: admin._id, 
-        email: admin.email,
-        role: admin.role 
-      });
-    }
-
-    // If no admin is found, check for a regular user
-    const user = await User.findOne({ email });
+    let user = await SubAdmin.findOne({ email });  // Check for sub-admin
     if (user) {
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      return res.json({ 
-        message: 'User logged in successfully', 
-        redirect: '/home', 
+      // If the user is a sub-admin or admin, include role in the token
+      const token = jwt.sign({
         userId: user._id,
-        email: user.email,
-        role: 'User'
+        role: user.role,
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+      return res.json({ 
+        message: 'Admin logged in successfully', 
+        token, 
+        role: user.role, 
+        userId: user._id,
       });
     }
 
-    // If neither an admin nor user exists with that email
+    // Check for regular user
+    const regularUser = await User.findOne({ email });
+    if (regularUser) {
+      const isMatch = await bcrypt.compare(password, regularUser.password);
+      if (!isMatch) {
+        return res.status(400).json({ message: 'Invalid credentials' });
+      }
+
+      // Create a token for the regular user as well
+      const token = jwt.sign({
+        userId: regularUser._id,
+        role: 'user',
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+      return res.json({ 
+        message: 'User logged in successfully', 
+        token, 
+        role: 'user', 
+        userId: regularUser._id,
+      });
+    }
+
     return res.status(400).json({ message: 'User not found' });
 
   } catch (error) {
