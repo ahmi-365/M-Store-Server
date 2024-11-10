@@ -3,8 +3,6 @@ const bcrypt = require('bcryptjs');
 const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin model
 const User = require('../models/User'); // Regular user model
 const router = express.Router();
-const jwt = require('jsonwebtoken');
-
 
 // Admin login route
 router.post('/login', async (req, res) => {
@@ -18,24 +16,12 @@ router.post('/login', async (req, res) => {
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
-
-      // Dynamically assign the role based on the admin type
-      const role = admin.role === 'superadmin' ? 'admin' : admin.role; // 'admin' for superadmin, otherwise use their own role
-
-      // Generate JWT for the admin
-      const token = jwt.sign(
-        { userId: admin._id, role: role, email: admin.email },
-        process.env.JWT_SECRET,  // Secret from .env
-        { expiresIn: '1h' }  // Token expires in 1 hour
-      );
-
-      return res.json({
-        message: 'Admin logged in successfully',
-        token,  // Send the token in the response
+      return res.json({ 
+        message: 'Admin logged in successfully', 
         redirect: '/admin-dashboard',
-        userId: admin._id,
+        userId: admin._id, 
         email: admin.email,
-        role: role  // Send role in the response
+        role: admin.role 
       });
     }
 
@@ -47,20 +33,12 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      // Generate JWT for regular user
-      const token = jwt.sign(
-        { userId: user._id, role: 'user', email: user.email },
-        process.env.JWT_SECRET,  // Secret from .env
-        { expiresIn: '1h' }  // Token expires in 1 hour
-      );
-
-      return res.json({
-        message: 'User logged in successfully',
-        token,  // Send the token in the response
+      return res.json({ 
+        message: 'User logged in successfully', 
         redirect: '/home', 
         userId: user._id,
         email: user.email,
-        role: 'user'  // Send role in the response
+        role: 'User'
       });
     }
 
