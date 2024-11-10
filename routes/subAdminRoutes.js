@@ -1,5 +1,6 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin model
 const User = require('../models/User'); // Regular user model
 const router = express.Router();
@@ -16,8 +17,17 @@ router.post('/login', async (req, res) => {
       if (!isMatch) {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
+
+      // Generate JWT for the admin
+      const token = jwt.sign(
+        { userId: admin._id, role: admin.role, email: admin.email },
+        process.env.JWT_SECRET,  // Ensure you have a secret key in .env
+        { expiresIn: '1h' }  // Token expires in 1 hour
+      );
+
       return res.json({ 
         message: 'Admin logged in successfully', 
+        token,  // Send the token in the response
         redirect: '/admin-dashboard',
         userId: admin._id, 
         email: admin.email,
@@ -33,8 +43,15 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
+      const token = jwt.sign(
+        { userId: user._id, role: 'User', email: user.email },
+        process.env.JWT_SECRET,  // Ensure you have a secret key in .env
+        { expiresIn: '1h' }  // Token expires in 1 hour
+      );
+
       return res.json({ 
         message: 'User logged in successfully', 
+        token,  // Send the token in the response
         redirect: '/home', 
         userId: user._id,
         email: user.email,
@@ -51,10 +68,10 @@ router.post('/login', async (req, res) => {
   }
 });
 
-
 // Fetch all sub-admins (only accessible by an admin)
-router.get('/subadmins',  async (req, res) => {
+router.get('/subadmins', async (req, res) => {
   try {
+    // You should validate the JWT token here for authentication
     const subAdmins = await SubAdmin.find({});
     res.status(200).json(subAdmins);
   } catch (error) {
@@ -91,6 +108,7 @@ router.delete('/subadmins/:id', async (req, res) => {
     res.status(500).json({ message: "Error deleting sub-admin" });
   }
 });
+
 // Update a sub-admin by ID (only accessible by an admin)
 router.put('/subadmins/:id', async (req, res) => {
   const { id } = req.params;
@@ -121,4 +139,5 @@ router.put('/subadmins/:id', async (req, res) => {
     res.status(500).json({ message: "Error updating sub-admin" });
   }
 });
+
 module.exports = router;
