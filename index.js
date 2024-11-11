@@ -311,6 +311,9 @@ const userRoutes = require('./routes/userRoutes');
 const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
 const subAdminRoutes = require('./routes/subAdminRoutes');
+const roleRoutes = require('./routes/RoleManage');
+
+app.use('/api/roles', roleRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use('/api/admin', subAdminRoutes);
 app.use('/api/users', userRoutes);
