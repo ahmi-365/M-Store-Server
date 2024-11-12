@@ -5,19 +5,18 @@ const router = express.Router();
 const mongoose = require('mongoose');
 
 // Delete user route
+// Delete user route
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
     try {
-        // Find the user by ID
-        const user = await User.findById(id);
-        
-        if (!user) {
+        // Find and delete the user by ID
+        const deletedUser = await User.findByIdAndDelete(id);
+
+        if (!deletedUser) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Remove the user
-        await user.remove();
         return res.status(200).json({ message: 'User deleted successfully' });
     } catch (error) {
         console.error('Error deleting user:', error);
