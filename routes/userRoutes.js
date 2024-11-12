@@ -105,7 +105,8 @@ router.put('/:id', async (req, res) => {
   // Delete user
   router.delete('/:id', async (req, res) => {
     const { id } = req.params;
-  
+    console.log(`Attempting to delete user with ID: ${id}`); // Log the ID to verify it matches
+    
     try {
       const user = await User.findById(id);
       if (!user) {
@@ -119,6 +120,7 @@ router.put('/:id', async (req, res) => {
       res.status(500).json({ message: 'Server error while deleting user' });
     }
   });
+  
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
