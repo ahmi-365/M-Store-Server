@@ -4,31 +4,23 @@ const User = require('../models/User');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-router.delete('/:id', async (req, res) => {
-  const { id } = req.params;
-  console.log(`Received delete request for ID: ${id}`); // Log incoming ID
-
-  // Check if ID is a valid MongoDB ObjectId
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    console.error('Invalid ID format');
-    return res.status(400).json({ message: 'Invalid user ID format' });
-  }
-
-  try {
-    const user = await User.findById(id);
-    if (!user) {
-      console.warn(`No user found with ID: ${id}`);
-      return res.status(404).json({ message: 'User not found' });
+router.delete('/users/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const user = await User.findById(id);  // Find user by ID
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        
+        await user.remove();  // Delete the user
+        res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting user:', error); // Log the error
+        res.status(500).json({ message: 'Error deleting user', error: error.message });
     }
-
-    await user.remove();
-    console.log(`User with ID: ${id} deleted successfully`);
-    res.status(200).json({ message: 'User deleted successfully' });
-  } catch (error) {
-    console.error('Error deleting user:', error);
-    res.status(500).json({ message: 'Server error while deleting user' });
-  }
 });
+
+
 // User signup (for regular users, no direct admin creation here)
 router.post('/signup', async (req, res) => {
     const { email, password } = req.body;
