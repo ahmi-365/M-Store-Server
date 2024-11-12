@@ -2,6 +2,7 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const SubAdmin = require('../models/Admin');  // Ensure this is your SubAdmin model
 const User = require('../models/User'); // Regular user model
+const Role = require('../models/Role'); // Import the Role model
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 
@@ -17,10 +18,15 @@ router.post('/login', async (req, res) => {
         return res.status(400).json({ message: 'Invalid credentials' });
       }
 
-      // If the user is a sub-admin or admin, include role in the token
+      // Fetch role and permissions for the sub-admin
+      const roleData = await Role.findOne({ name: user.role });
+      const permissions = roleData ? roleData.permissions : [];
+
+      // Include role and permissions in the token
       const token = jwt.sign({
         userId: user._id,
         role: user.role,
+        permissions: permissions,
       }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
       return res.json({ 
@@ -28,6 +34,7 @@ router.post('/login', async (req, res) => {
         token, 
         role: user.role, 
         userId: user._id,
+        permissions: permissions
       });
     }
 

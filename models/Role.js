@@ -12,7 +12,7 @@ const roleSchema = new mongoose.Schema({
     required: false,
   },
   permissions: {
-    type: [String], // Array of permissions (e.g., ["manageProducts", "viewOrders"])
+    type: [String], 
     default: [],
   },
 });
