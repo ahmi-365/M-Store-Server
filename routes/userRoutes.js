@@ -97,24 +97,16 @@ router.post('/login', async (req, res) => {
 // });
 
 // Logout user
-router.get('/users', async (req, res) => {
+router.get('/', async (req, res) => {
     try {
-      const searchTerm = req.query.search || '';
-      
-      // Search for users by name or email (case-insensitive)
-      const users = await User.find({
-        $or: [
-          { name: { $regex: searchTerm, $options: 'i' } },
-          { email: { $regex: searchTerm, $options: 'i' } },
-        ],
-      });
-  
-      res.status(200).json(users);
-    } catch (err) {
-      console.error('Error fetching users:', err);
-      res.status(500).json({ message: 'Server error' });
+      const users = await User.find(); // Fetch all users from the database
+      res.json(users);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({ message: 'Failed to fetch users' });
     }
   });
+  
   
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {
