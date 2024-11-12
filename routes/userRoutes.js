@@ -69,34 +69,6 @@ router.post('/login', async (req, res) => {
         return res.status(500).json({ message: 'Internal server error' });
     }
 });
-
-// Update user data (protected route)
-// router.put('/update', authenticateUser, async (req, res) => {
-//     const { email, newData } = req.body; // newData could be any other user data to update
-
-//     try {
-//         const user = await User.findOneAndUpdate({ email }, newData, { new: true });
-//         if (!user) {
-//             return res.status(404).json({ error: 'User not found' });
-//         }
-//         res.json(user); // Send back the updated user data
-//     } catch (error) {
-//         res.status(500).json({ error: 'Failed to update user' });
-//     }
-// });
-
-// // Fetch all users (optional, can be protected)
-// router.get('/', authenticateUser, async (req, res) => {
-//     try {
-//         const users = await User.find({}, 'email');
-//         res.json(users);
-//     } catch (error) {
-//         console.error('Failed to fetch users:', error);
-//         res.status(500).json({ message: 'Failed to fetch users.' });
-//     }
-// });
-
-// Logout user
 router.get('/', async (req, res) => {
     try {
       const users = await User.find(); // Fetch all users from the database
@@ -107,7 +79,46 @@ router.get('/', async (req, res) => {
     }
   });
   
+  // Edit user details
+router.put('/:id', async (req, res) => {
+    const { id } = req.params;
+    const { email, role } = req.body;
   
+    try {
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      // Update fields
+      user.email = email || user.email;
+      user.role = role || user.role;
+  
+      const updatedUser = await user.save();
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error('Error updating user:', error);
+      res.status(500).json({ message: 'Server error while updating user' });
+    }
+  });
+  
+  // Delete user
+  router.delete('/:id', async (req, res) => {
+    const { id } = req.params;
+  
+    try {
+      const user = await User.findById(id);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found' });
+      }
+  
+      await user.remove();
+      res.status(200).json({ message: 'User deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ message: 'Server error while deleting user' });
+    }
+  });
 router.post('/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
