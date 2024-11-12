@@ -1,17 +1,34 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-
 const router = express.Router();
+const mongoose = require('mongoose');
 
-// Middleware to authenticate users
-const authenticateUser = (req, res, next) => {
-    if (!req.session.user) {
-        return res.status(401).json({ message: 'Unauthorized' });
+router.delete('/:id', async (req, res) => {
+  const { id } = req.params;
+  console.log(`Received delete request for ID: ${id}`); // Log incoming ID
+
+  // Check if ID is a valid MongoDB ObjectId
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    console.error('Invalid ID format');
+    return res.status(400).json({ message: 'Invalid user ID format' });
+  }
+
+  try {
+    const user = await User.findById(id);
+    if (!user) {
+      console.warn(`No user found with ID: ${id}`);
+      return res.status(404).json({ message: 'User not found' });
     }
-    next();
-};
 
+    await user.remove();
+    console.log(`User with ID: ${id} deleted successfully`);
+    res.status(200).json({ message: 'User deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    res.status(500).json({ message: 'Server error while deleting user' });
+  }
+});
 // User signup (for regular users, no direct admin creation here)
 router.post('/signup', async (req, res) => {
     const { email, password } = req.body;
@@ -99,25 +116,6 @@ router.put('/:id', async (req, res) => {
     } catch (error) {
       console.error('Error updating user:', error);
       res.status(500).json({ message: 'Server error while updating user' });
-    }
-  });
-  
-  // Delete user
-  router.delete('/:id', async (req, res) => {
-    const { id } = req.params;
-    console.log(`Attempting to delete user with ID: ${id}`); // Log the ID to verify it matches
-    
-    try {
-      const user = await User.findById(id);
-      if (!user) {
-        return res.status(404).json({ message: 'User not found' });
-      }
-  
-      await user.remove();
-      res.status(200).json({ message: 'User deleted successfully' });
-    } catch (error) {
-      console.error('Error deleting user:', error);
-      res.status(500).json({ message: 'Server error while deleting user' });
     }
   });
   
