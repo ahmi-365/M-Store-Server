@@ -4,22 +4,26 @@ const User = require('../models/User');
 const router = express.Router();
 const mongoose = require('mongoose');
 
-router.delete('/users/:id', async (req, res) => {
+// Delete user route
+router.delete('/:id', async (req, res) => {
     const { id } = req.params;
+
     try {
-        const user = await User.findById(id);  // Find user by ID
+        // Find the user by ID
+        const user = await User.findById(id);
+        
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-        
-        await user.remove();  // Delete the user
-        res.status(200).json({ message: 'User deleted successfully' });
+
+        // Remove the user
+        await user.remove();
+        return res.status(200).json({ message: 'User deleted successfully' });
     } catch (error) {
-        console.error('Error deleting user:', error); // Log the error
-        res.status(500).json({ message: 'Error deleting user', error: error.message });
+        console.error('Error deleting user:', error);
+        return res.status(500).json({ message: 'Error deleting user', error: error.message });
     }
 });
-
 
 // User signup (for regular users, no direct admin creation here)
 router.post('/signup', async (req, res) => {
