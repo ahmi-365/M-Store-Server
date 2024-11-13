@@ -254,8 +254,9 @@ app.post("/api/create-checkout-session", async (req, res) => {
     await OrderItem.insertMany(orderItems);
     res.json({ id: session.id });
   } catch (error) {
-    console.error("Failed to create Stripe session or save order:", error.message);
-    res.status(500).json({ error: "Failed to create Stripe session or save order" });
+    console.error("Failed to create Stripe session or save order:", error); // Log the entire error object
+    res.status(500).json({ error: "Failed to create Stripe session or save order", details: error.message });
+  
   }
 });
 
@@ -272,6 +273,7 @@ app.get("/api/orders/:id", async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 });
+
 app.get('/api/orders', async (req, res) => {
   try {
     const orders = await Order.find();
@@ -316,7 +318,7 @@ const roleRoutes = require('./routes/RoleManage');
 app.use('/api/roles', roleRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use('/api/admin', subAdminRoutes);
-app.use('/api/users', userRoutes);
+  app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
