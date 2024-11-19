@@ -1,6 +1,7 @@
 const express = require('express');
 const fetch = require('node-fetch'); // Required for making HTTP requests
-const app = express();
+
+const Router = express.Router(); // Initialize the Router
 
 // App ID and Secret from Facebook Developer Console
 const appId = '432104696419805';
@@ -8,7 +9,7 @@ const appSecret = '7797d1c4a559d93670c4bd57db5f5354';
 const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback';
 
 // Route for Facebook OAuth Callback
-app.get('/facebook/callback', async (req, res) => {
+Router.get('/facebook/callback', async (req, res) => {
   const code = req.query.code;
 
   if (!code) {
@@ -20,7 +21,7 @@ app.get('/facebook/callback', async (req, res) => {
     const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
       redirectUri
     )}&client_secret=${appSecret}&code=${code}`;
-    
+
     const tokenResponse = await fetch(tokenUrl);
     const tokenData = await tokenResponse.json();
 
@@ -45,3 +46,5 @@ app.get('/facebook/callback', async (req, res) => {
     res.status(500).send('An error occurred during Facebook login');
   }
 });
+
+module.exports = Router; // Export the Router
