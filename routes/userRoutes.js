@@ -10,7 +10,7 @@ const appSecret = '7797d1c4a559d93670c4bd57db5f5354'; // Replace with your App S
 const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback'; // Replace with your Redirect URI
 
 // Facebook OAuth callback route
-router.get('/api/users/facebook/callback', async (req, res) => {
+router.get('/facebook/callback', async (req, res) => {
     const { code } = req.query;
   
     if (!code) {
