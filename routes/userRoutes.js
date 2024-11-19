@@ -19,29 +19,44 @@ router.get('/facebook/callback', async (req, res) => {
     }
   
     try {
-      // Request access token from Facebook
+      // Step 1: Request access token from Facebook
       const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
       const tokenResponse = await fetch(tokenUrl);
       const tokenData = await tokenResponse.json();
+      
+      // Check if Facebook returned an error in token data
+      if (tokenData.error) {
+        console.error('Facebook token error:', tokenData.error);
+        return res.status(500).json({ message: 'Facebook token exchange failed', error: tokenData.error });
+      }
+  
       console.log('Token Data:', tokenData);
   
       if (!tokenData.access_token) {
-        throw new Error('Failed to retrieve access token');
+        console.error('Access token is missing');
+        return res.status(500).json({ message: 'Failed to retrieve access token' });
       }
   
       const accessToken = tokenData.access_token;
   
-      // Request user profile data from Facebook
+      // Step 2: Request user profile data from Facebook
       const profileUrl = `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`;
       const profileResponse = await fetch(profileUrl);
       const profileData = await profileResponse.json();
+  
+      // Check if Facebook returned an error in profile data
+      if (profileData.error) {
+        console.error('Facebook profile error:', profileData.error);
+        return res.status(500).json({ message: 'Failed to fetch Facebook profile', error: profileData.error });
+      }
+  
       console.log('Facebook User Profile:', profileData);
   
       if (!profileData.email) {
         return res.status(400).json({ message: 'Facebook account does not provide an email address' });
       }
   
-      // Check if user already exists, otherwise create a new user
+      // Step 3: Check if user exists in the database
       let user = await User.findOne({ email: profileData.email });
       if (!user) {
         console.log('Creating new user...');
@@ -54,9 +69,10 @@ router.get('/facebook/callback', async (req, res) => {
         await user.save();
       }
   
-      // Store user session
+      // Step 4: Store user session (this assumes you're using session middleware like express-session)
       req.session.user = { email: user.email, isAdmin: user.isAdmin };
   
+      // Step 5: Return success response
       res.status(200).json({
         message: 'Facebook login successful',
         user: {
@@ -66,12 +82,12 @@ router.get('/facebook/callback', async (req, res) => {
           isAdmin: user.isAdmin,
         },
       });
+  
     } catch (error) {
       console.error('Error during Facebook OAuth:', error.message);
       res.status(500).json({ message: 'Facebook login failed', error: error.message });
     }
   });
-
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
