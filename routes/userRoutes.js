@@ -10,7 +10,7 @@ const appSecret = '7797d1c4a559d93670c4bd57db5f5354'; // Replace with your App S
 const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback'; // Replace with your Redirect URI
 
 // Facebook OAuth callback route
-router.get('/facebook/callback', async (req, res) => {
+router.get('/api/users/facebook/callback', async (req, res) => {
     const { code } = req.query;
   
     if (!code) {
@@ -19,15 +19,10 @@ router.get('/facebook/callback', async (req, res) => {
     }
   
     try {
-      console.log('Authorization code received:', code);
-  
-      const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&client_secret=${appSecret}&code=${code}`;
-  
+      // Request access token from Facebook
+      const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&client_secret=${appSecret}&code=${code}`;
       const tokenResponse = await fetch(tokenUrl);
       const tokenData = await tokenResponse.json();
-  
       console.log('Token Data:', tokenData);
   
       if (!tokenData.access_token) {
@@ -36,18 +31,18 @@ router.get('/facebook/callback', async (req, res) => {
   
       const accessToken = tokenData.access_token;
   
+      // Request user profile data from Facebook
       const profileUrl = `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`;
       const profileResponse = await fetch(profileUrl);
       const profileData = await profileResponse.json();
-  
       console.log('Facebook User Profile:', profileData);
   
       if (!profileData.email) {
         return res.status(400).json({ message: 'Facebook account does not provide an email address' });
       }
   
+      // Check if user already exists, otherwise create a new user
       let user = await User.findOne({ email: profileData.email });
-  
       if (!user) {
         console.log('Creating new user...');
         user = new User({
@@ -59,6 +54,7 @@ router.get('/facebook/callback', async (req, res) => {
         await user.save();
       }
   
+      // Store user session
       req.session.user = { email: user.email, isAdmin: user.isAdmin };
   
       res.status(200).json({
@@ -75,7 +71,6 @@ router.get('/facebook/callback', async (req, res) => {
       res.status(500).json({ message: 'Facebook login failed', error: error.message });
     }
   });
-  
 
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
