@@ -11,67 +11,71 @@ const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback'; 
 
 // Facebook OAuth callback route
 router.get('/facebook/callback', async (req, res) => {
-  const { code } = req.query;
-
-  if (!code) {
-    return res.status(400).json({ message: 'Authorization code is missing' });
-  }
-
-  try {
-    // Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&client_secret=${appSecret}&code=${code}`;
-
-    const tokenResponse = await fetch(tokenUrl);
-    const tokenData = await tokenResponse.json();
-
-    if (!tokenData.access_token) {
-      throw new Error('Failed to retrieve access token');
+    const { code } = req.query;
+  
+    if (!code) {
+      console.error('Authorization code is missing');
+      return res.status(400).json({ message: 'Authorization code is missing' });
     }
-
-    const accessToken = tokenData.access_token;
-
-    // Fetch user profile from Facebook
-    const profileUrl = `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`;
-    const profileResponse = await fetch(profileUrl);
-    const profileData = await profileResponse.json();
-
-    if (!profileData.email) {
-      return res.status(400).json({ message: 'Facebook account does not provide an email address' });
-    }
-
-    // Check if the user already exists
-    let user = await User.findOne({ email: profileData.email });
-
-    if (!user) {
-      // Create a new user if not exists
-      user = new User({
-        email: profileData.email,
-        name: profileData.name,
-        facebookId: profileData.id,
-        isAdmin: false, // Default to non-admin
+  
+    try {
+      console.log('Authorization code received:', code);
+  
+      const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
+        redirectUri
+      )}&client_secret=${appSecret}&code=${code}`;
+  
+      const tokenResponse = await fetch(tokenUrl);
+      const tokenData = await tokenResponse.json();
+  
+      console.log('Token Data:', tokenData);
+  
+      if (!tokenData.access_token) {
+        throw new Error('Failed to retrieve access token');
+      }
+  
+      const accessToken = tokenData.access_token;
+  
+      const profileUrl = `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`;
+      const profileResponse = await fetch(profileUrl);
+      const profileData = await profileResponse.json();
+  
+      console.log('Facebook User Profile:', profileData);
+  
+      if (!profileData.email) {
+        return res.status(400).json({ message: 'Facebook account does not provide an email address' });
+      }
+  
+      let user = await User.findOne({ email: profileData.email });
+  
+      if (!user) {
+        console.log('Creating new user...');
+        user = new User({
+          email: profileData.email,
+          name: profileData.name,
+          facebookId: profileData.id,
+          isAdmin: false,
+        });
+        await user.save();
+      }
+  
+      req.session.user = { email: user.email, isAdmin: user.isAdmin };
+  
+      res.status(200).json({
+        message: 'Facebook login successful',
+        user: {
+          email: user.email,
+          name: user.name,
+          id: user._id,
+          isAdmin: user.isAdmin,
+        },
       });
-
-      await user.save();
+    } catch (error) {
+      console.error('Error during Facebook OAuth:', error.message);
+      res.status(500).json({ message: 'Facebook login failed', error: error.message });
     }
-
-    // Set session or return user data
-    req.session.user = { email: user.email, isAdmin: user.isAdmin };
-    res.status(200).json({
-      message: 'Facebook login successful',
-      user: {
-        email: user.email,
-        name: user.name,
-        id: user._id,
-        isAdmin: user.isAdmin,
-      },
-    });
-  } catch (error) {
-    console.error('Error during Facebook OAuth:', error);
-    res.status(500).json({ message: 'Facebook login failed', error: error.message });
-  }
-});
+  });
+  
 
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
