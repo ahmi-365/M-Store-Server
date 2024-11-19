@@ -314,12 +314,14 @@ const couponRoutes = require("./routes/CoupenRoutes");
 const productRoutes = require('./routes/productRoutes');
 const subAdminRoutes = require('./routes/subAdminRoutes');
 const roleRoutes = require('./routes/RoleManage');
+const roleFb = require('./routes/FBookRoute');
 
 app.use('/api/roles', roleRoutes);
 app.use("/api/coupons", couponRoutes);
 app.use('/api/admin', subAdminRoutes);
   app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/facebook', roleFb);
 app.listen(PORT, () => {
     console.log(`Server is running on http://localhost:${PORT}`);
 });
