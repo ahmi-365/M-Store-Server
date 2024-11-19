@@ -13,6 +13,8 @@ const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback'; 
 router.get('/facebook/callback', async (req, res) => {
     const { code } = req.query;
   
+    console.log('Received Facebook code:', code);  // Log the code received from frontend
+  
     if (!code) {
       console.error('Authorization code is missing');
       return res.status(400).json({ message: 'Authorization code is missing' });
@@ -24,13 +26,12 @@ router.get('/facebook/callback', async (req, res) => {
       const tokenResponse = await fetch(tokenUrl);
       const tokenData = await tokenResponse.json();
       
-      // Check if Facebook returned an error in token data
       if (tokenData.error) {
         console.error('Facebook token error:', tokenData.error);
         return res.status(500).json({ message: 'Facebook token exchange failed', error: tokenData.error });
       }
   
-      console.log('Token Data:', tokenData);
+      console.log('Token Data:', tokenData);  // Check token response
   
       if (!tokenData.access_token) {
         console.error('Access token is missing');
@@ -44,7 +45,6 @@ router.get('/facebook/callback', async (req, res) => {
       const profileResponse = await fetch(profileUrl);
       const profileData = await profileResponse.json();
   
-      // Check if Facebook returned an error in profile data
       if (profileData.error) {
         console.error('Facebook profile error:', profileData.error);
         return res.status(500).json({ message: 'Failed to fetch Facebook profile', error: profileData.error });
@@ -56,38 +56,14 @@ router.get('/facebook/callback', async (req, res) => {
         return res.status(400).json({ message: 'Facebook account does not provide an email address' });
       }
   
-      // Step 3: Check if user exists in the database
-      let user = await User.findOne({ email: profileData.email });
-      if (!user) {
-        console.log('Creating new user...');
-        user = new User({
-          email: profileData.email,
-          name: profileData.name,
-          facebookId: profileData.id,
-          isAdmin: false,
-        });
-        await user.save();
-      }
-  
-      // Step 4: Store user session (this assumes you're using session middleware like express-session)
-      req.session.user = { email: user.email, isAdmin: user.isAdmin };
-  
-      // Step 5: Return success response
-      res.status(200).json({
-        message: 'Facebook login successful',
-        user: {
-          email: user.email,
-          name: user.name,
-          id: user._id,
-          isAdmin: user.isAdmin,
-        },
-      });
-  
+      // Continue with user creation logic...
     } catch (error) {
       console.error('Error during Facebook OAuth:', error.message);
       res.status(500).json({ message: 'Facebook login failed', error: error.message });
     }
   });
+  
+  
 router.delete('/:id', async (req, res) => {
     const { id } = req.params;
 
