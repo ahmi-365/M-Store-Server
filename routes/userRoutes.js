@@ -13,55 +13,28 @@ const appSecret = '7797d1c4a559d93670c4bd57db5f5354'; // Replace with your App S
 const redirectUri = 'http://localhost:5173/facebook/callback';
 
 // Facebook OAuth callback route
-router.get('/facebook/callback', async (req, res) => {
-  const { code } = req.query;
-
-  if (!code) {
-    console.error('Authorization code is missing');
-    return res.status(400).json({ message: 'Authorization code is missing' });
-  }
-
-  try {
-    // Step 1: Exchange code for access token
-    const tokenUrl = `https://graph.facebook.com/v12.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&client_secret=${appSecret}&code=${code}`;
-      
-    const tokenResponse = await fetch(tokenUrl);
-    const tokenData = await tokenResponse.json();
-
-    if (tokenData.error) {
-      console.error('Facebook token error:', tokenData.error);
-      return res.status(500).json({ message: 'Facebook token exchange failed', error: tokenData.error });
+router.post('/facebook/callback', async (req, res) => {
+    const { fbId, name, email } = req.body;
+    
+    // Check if user already exists in your database
+    const user = await User.findOne({ facebookId: fbId });
+    
+    if (!user) {
+        // Create a new user if not found
+        const newUser = new User({
+            facebookId: fbId,
+            name,
+            email
+        });
+        await newUser.save();
+        return res.json({ message: 'User created', user: newUser });
     }
-
-    const accessToken = tokenData.access_token;
-
-    // Step 2: Fetch user profile
-    const profileUrl = `https://graph.facebook.com/me?fields=id,name,email&access_token=${accessToken}`;
-    const profileResponse = await fetch(profileUrl);
-    const profileData = await profileResponse.json();
-
-    if (profileData.error) {
-      console.error('Facebook profile error:', profileData.error);
-      return res.status(500).json({ message: 'Failed to fetch Facebook profile', error: profileData.error });
-    }
-
-    // Log profile data for debugging
-    console.log('Facebook User Profile:', profileData);
-
-    // Example: Respond with user data
-    return res.status(200).json({
-      id: profileData.id,
-      name: profileData.name,
-      email: profileData.email,
-      accessToken,
-    });
-  } catch (error) {
-    console.error('Error during Facebook OAuth:', error.message);
-    res.status(500).json({ message: 'Facebook login failed', error: error.message });
-  }
+    
+    // User found, authenticate them and return user info or token
+    return res.json({ message: 'User authenticated', user });
 });
+
+
 
 
 router.delete('/:id', async (req, res) => {
