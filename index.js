@@ -230,7 +230,7 @@ app.post("/api/create-checkout-session", async (req, res) => {
         user_email: userEmail,
         order_id: newOrder._id.toString(),
       },
-      success_url: `https://e-commerace-store.onrender.com/Order-history`,
+      success_url: `https://e-commerace-store.onrender.com/Order-history?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `https://e-commerace-store.onrender.com/`,
     });
     newOrder.eventId = session.id;
