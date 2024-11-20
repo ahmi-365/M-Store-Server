@@ -7,7 +7,7 @@ const router = express.Router();
 // Facebook App Details
 const appId = '432104696419805'; // Replace with your App ID
 const appSecret = '7797d1c4a559d93670c4bd57db5f5354'; // Replace with your App Secret
-const redirectUri = 'https://e-commerace-store.onrender.com/facebook/callback'; // Replace with your Redirect URI
+const redirectUri = 'https://e-commerace-store.onrender.com/api/users/facebook/callback';
 
 // Facebook OAuth callback route
 router.get('/facebook/callback', async (req, res) => {
